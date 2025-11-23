@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
-import { Physics, useBox } from '@react-three/cannon'
+import { Physics, useBox, usePlane } from '@react-three/cannon'
 import { Suspense, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors, diceFaceLabels } from '../constants'
@@ -123,6 +123,49 @@ const DiceMesh = ({
   )
 }
 
+const FloorAndWalls = () => {
+  const [floorRef] = usePlane(() => ({
+    rotation: [-Math.PI / 2, 0, 0],
+    position: [0, 0, 0],
+    type: 'Static',
+  }))
+
+  const wallMaterialProps = {
+    color: '#cfe2ff',
+    opacity: 0.1,
+    transparent: true,
+    depthWrite: false,
+  }
+
+  const createWall = (position: [number, number, number], rotation: [number, number, number]) => {
+    const [wallRef] = useBox(() => ({
+      args: [12, 4, 0.5],
+      position,
+      rotation,
+      type: 'Static',
+    }))
+    return (
+      <mesh key={`${position.join('-')}`} ref={wallRef as React.MutableRefObject<THREE.Mesh>}>
+        <boxGeometry args={[12, 4, 0.5]} />
+        <meshPhysicalMaterial {...wallMaterialProps} />
+      </mesh>
+    )
+  }
+
+  return (
+    <>
+      <mesh ref={floorRef as React.MutableRefObject<THREE.Mesh>} receiveShadow>
+        <planeGeometry args={[20, 20]} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.08} transparent depthWrite={false} />
+      </mesh>
+      {createWall([0, 2, -6], [0, 0, 0])}
+      {createWall([0, 2, 6], [0, 0, 0])}
+      {createWall([-6, 2, 0], [0, Math.PI / 2, 0])}
+      {createWall([6, 2, 0], [0, Math.PI / 2, 0])}
+    </>
+  )
+}
+
 export const DiceRollerOverlay = ({ dice, visible, onClose, tallies }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
 
@@ -144,13 +187,10 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies }: DiceRolle
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
         <Physics gravity={[0, -9.81, 0]}>
+          <FloorAndWalls />
           {dice.map((item) => (
             <DiceMesh key={item.id} type={item.type} faceIndex={item.faceIndex} settled={settled} />
           ))}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
-            <planeGeometry args={[15, 15]} />
-            <meshStandardMaterial color="#1b1f29" />
-          </mesh>
         </Physics>
         <Suspense fallback={null}>
           <OrbitControls enablePan={false} enableZoom={false} />
