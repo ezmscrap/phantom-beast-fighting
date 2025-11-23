@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo } from 'react'
 import {
   baseDisplayNames,
   classDisplayNames,
@@ -8,7 +8,7 @@ import {
 } from './constants'
 import type { BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
-import { DiceRollerOverlay, type DiceVisual } from './components/DiceRollerOverlay'
+import type { DiceVisual } from './components/DiceRollerOverlay'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
 import { UnitCreationModal } from './components/modals/UnitCreationModal'
 import { UnitPlacementModal } from './components/modals/UnitPlacementModal'
@@ -20,6 +20,11 @@ import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
 import { appConfig } from './config'
 import { getActivePlayerForStep, getStepActionInfo, canAdvanceStep, executeAction, startDiceRoll } from './logic/actions'
+
+const DiceRollerOverlay = lazy(async () => {
+  const module = await import('./components/DiceRollerOverlay')
+  return { default: module.DiceRollerOverlay }
+})
 
 function App() {
   const {
@@ -614,16 +619,18 @@ function App() {
         </section>
       ) : null}
 
-      {diceOverlay ? (
-        <DiceRollerOverlay
-          dice={diceOverlay.dice}
-          tallies={diceOverlay.tallies}
-          visible
-          onClose={confirmDiceResult}
-          settings={diceOverlay.debugSettings ?? debugSettings}
-          onResolve={handleDiceResolve}
-        />
-      ) : null}
+      <Suspense fallback={null}>
+        {diceOverlay ? (
+          <DiceRollerOverlay
+            dice={diceOverlay.dice}
+            tallies={diceOverlay.tallies}
+            visible
+            onClose={confirmDiceResult}
+            settings={diceOverlay.debugSettings ?? debugSettings}
+            onResolve={handleDiceResolve}
+          />
+        ) : null}
+      </Suspense>
 
       {victor ? (
         <div className="victory-overlay">
