@@ -1,9 +1,10 @@
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text } from '@react-three/drei'
+import { Canvas, useLoader } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import { Physics, useBox, usePlane } from '@react-three/cannon'
 import { Suspense, useEffect, useState } from 'react'
 import * as THREE from 'three'
-import { GOLD_FACES, SILVER_FACES, diceFaceColors, diceFaceLabels } from '../constants'
+import { TextureLoader } from 'three'
+import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
 import type { ClassType, DebugDiceSettings, DiceType, MovementBudget } from '../types'
 
 export interface DiceVisual {
@@ -40,11 +41,13 @@ const DiceMesh = ({
   faceIndex,
   settled,
   settings,
+  icons,
 }: {
   type: DiceType
   faceIndex: number
   settled: boolean
   settings: DebugDiceSettings
+  icons: Record<ClassType, THREE.Texture>
 }) => {
   const dieSize = settings.dieSize
   const [ref, api] = useBox(() => ({
@@ -76,7 +79,6 @@ const DiceMesh = ({
   }, [api, faceIndex, settled, settings])
 
   const color = diceFaceColors[type]
-  const textColor = type === 'gold' ? '#2c1900' : '#123c6b'
   return (
     <group ref={ref as React.MutableRefObject<THREE.Group>}>
       <mesh castShadow receiveShadow>
@@ -86,41 +88,28 @@ const DiceMesh = ({
         ))}
       </mesh>
       {FACE_DEFINITIONS[type].map((face, index) => {
-        const label = diceFaceLabels[face]
-        const textProps = {
-          fontSize: 0.35,
-          color: textColor,
-          anchorX: 'center' as const,
-          anchorY: 'middle' as const,
-          children: label,
-        }
-        const offset = dieSize / 2 + 0.04
-        switch (index) {
-          case 0:
-            return (
-              <Text key={index} position={[offset, 0, 0]} rotation={[0, Math.PI / 2, 0]} {...textProps} />
-            )
-          case 1:
-            return (
-              <Text key={index} position={[-offset, 0, 0]} rotation={[0, -Math.PI / 2, 0]} {...textProps} />
-            )
-          case 2:
-            return <Text key={index} position={[0, offset, 0]} rotation={[Math.PI / 2, 0, 0]} {...textProps} />
-          case 3:
-            return (
-              <Text key={index} position={[0, -offset, 0]} rotation={[-Math.PI / 2, 0, 0]} {...textProps} />
-            )
-          case 4:
-            return (
-              <Text key={index} position={[0, 0, offset]} rotation={[0, 0, 0]} {...textProps} />
-            )
-          case 5:
-            return (
-              <Text key={index} position={[0, 0, -offset]} rotation={[0, Math.PI, 0]} {...textProps} />
-            )
-          default:
-            return null
-        }
+        const offset = dieSize / 2 + 0.01
+        const iconSize = dieSize * 0.7
+        const transforms: Array<{ position: [number, number, number]; rotation: [number, number, number] }> = [
+          { position: [offset, 0, 0], rotation: [0, Math.PI / 2, 0] },
+          { position: [-offset, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+          { position: [0, offset, 0], rotation: [-Math.PI / 2, 0, 0] },
+          { position: [0, -offset, 0], rotation: [Math.PI / 2, 0, 0] },
+          { position: [0, 0, offset], rotation: [0, 0, 0] },
+          { position: [0, 0, -offset], rotation: [0, Math.PI, 0] },
+        ]
+        const transform = transforms[index]
+        return (
+          <mesh
+            key={`${face}-${index}`}
+            position={transform.position}
+            rotation={transform.rotation}
+            renderOrder={1}
+          >
+            <planeGeometry args={[iconSize, iconSize]} />
+            <meshBasicMaterial map={icons[face]} transparent opacity={0.95} color="#ffffff" />
+          </mesh>
+        )
       })}
     </group>
   )
@@ -169,8 +158,24 @@ const FloorAndWalls = () => {
   )
 }
 
+const iconPaths: Record<ClassType, string> = {
+  swordsman: '/icons/swords.svg',
+  mage: '/icons/wand.svg',
+  tactician: '/icons/chess.svg',
+}
+
 export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
+  const textures = useLoader(TextureLoader, Object.values(iconPaths))
+  textures.forEach((texture) => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.needsUpdate = true
+  })
+  const iconTextures = {
+    swordsman: textures[0],
+    mage: textures[1],
+    tactician: textures[2],
+  } satisfies Record<ClassType, THREE.Texture>
 
   useEffect(() => {
     if (!visible) return
@@ -202,6 +207,7 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
                   impulse: { x: 7, y: 5, z: 7, torque: 7 },
                 }
               }
+              icons={iconTextures}
             />
           ))}
         </Physics>

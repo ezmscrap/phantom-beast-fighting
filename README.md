@@ -47,5 +47,6 @@ npm run dev
 | 単独ダイスロール | 大きいシングルダイス2（生活#サイコロ） | `public/audio/dice_single.mp3` |
 | 複数ダイスロール | 大きいダブルダイス2（生活#サイコロ） | `public/audio/dice_multi.mp3` |
 | キャンセル | キャンセル（ボタン・システム） | `public/audio/cancel.mp3` |
+| サイコロアイコン | Material Symbols Outlined (Swords / Auto Fix High / Chess) | `public/icons/*.svg` |
 
 ライセンス・利用方法の詳細は [Springin’ Sound Stock のガイドライン](https://www.springin.org/sound-stock/guideline/) を参照してください。
