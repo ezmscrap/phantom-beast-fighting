@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   GOLD_FACES,
   INITIAL_BASE_CARDS,
@@ -76,7 +76,6 @@ type DicePlacementStage = 0 | 1 | 2 | 3
 interface PlacementState {
   player: PlayerId
   selectedUnitId?: string
-  confirmCell?: BoardCell
   swapMode: boolean
   swapSelection: string[]
   stepTag?: ProcedureStep
@@ -186,6 +185,7 @@ function App() {
     player: PlayerId
   } | null>(null)
   const [redistributionChoice, setRedistributionChoice] = useState<'R1' | 'R2' | 'R3'>('R1')
+  const [miniPlacementOpen, setMiniPlacementOpen] = useState(false)
   const [nameStage, setNameStage] = useState<'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'>(
     'names',
   )
@@ -193,6 +193,12 @@ function App() {
   const [nameLocks, setNameLocks] = useState({ A: false, B: false })
   const [initiativeChoice, setInitiativeChoice] = useState<PlayerId>('A')
   const [victor, setVictor] = useState<PlayerId | null>(null)
+
+  useEffect(() => {
+    if (!placementState) {
+      setMiniPlacementOpen(false)
+    }
+  }, [placementState])
 
   const activePlacementUnits = useMemo(() => {
     if (!placementState) return []
@@ -327,7 +333,15 @@ function App() {
       }),
     )
     markCreationComplete(placementState?.stepTag)
-    setPlacementState(null)
+    setPlacementState((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        selectedUnitId: undefined,
+        swapMode: false,
+        swapSelection: [],
+      }
+    })
     playAudio('unitPlace')
   }
 
@@ -563,12 +577,7 @@ function App() {
 
   const placementSelectionHandler = (unitId: string) => {
     setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: unitId } : prev))
-  }
-
-  const placementCellClick = (cell: BoardCell) => {
-    if (!placementState?.selectedUnitId) return
-    if (!currentPlacementTargets.includes(cell)) return
-    setPlacementState({ ...placementState, confirmCell: cell })
+    setMiniPlacementOpen(true)
   }
 
   const handleSwapUnits = (firstId: string, secondId: string) => {
@@ -602,13 +611,16 @@ function App() {
     })
   }
 
-  const confirmPlacementCell = () => {
-    if (!placementState?.confirmCell || !placementState.selectedUnitId) return
-    handlePlaceUnit(placementState.selectedUnitId, placementState.confirmCell)
+  const handleMiniPlacement = (cell: BoardCell) => {
+    if (!placementState?.selectedUnitId) return
+    if (!currentPlacementTargets.includes(cell)) return
+    handlePlaceUnit(placementState.selectedUnitId, cell)
+    setMiniPlacementOpen(false)
   }
 
-  const cancelPlacement = () => {
-    setPlacementState((prev) => (prev ? { ...prev, confirmCell: undefined } : prev))
+  const cancelMiniPlacement = () => {
+    setMiniPlacementOpen(false)
+    setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: undefined } : prev))
     playAudio('cancel')
   }
 
@@ -749,8 +761,7 @@ function App() {
                   const cell = `${column}${row}` as BoardCell
                   const occupant = boardMap.get(cell)
                   const highlight =
-                    (placementState && currentPlacementTargets.includes(cell)) ||
-                    (movementState?.selectedUnitId && movementState.destinations.includes(cell))
+                    (movementState?.selectedUnitId && movementState.destinations.includes(cell)) || false
                   const swapSelectable =
                     Boolean(placementState?.swapMode) &&
                     occupant &&
@@ -766,10 +777,6 @@ function App() {
                           if (swapSelectable && occupant) {
                             handleSwapSelection(occupant.id)
                           }
-                          return
-                        }
-                        if (placementState) {
-                          placementCellClick(cell)
                           return
                         }
                         if (movementState) {
@@ -1008,21 +1015,7 @@ function App() {
         ) : null}
       </Modal>
 
-      <Modal
-        title="ユニット配置"
-        isOpen={Boolean(placementState)}
-        onClose={() => setPlacementState(null)}
-        footer={
-          placementState?.confirmCell ? (
-            <div className="modal-actions">
-              <button onClick={confirmPlacementCell}>この位置で配置</button>
-              <button className="ghost" onClick={cancelPlacement}>
-                まだ決めない
-              </button>
-            </div>
-          ) : null
-        }
-      >
+      <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={() => setPlacementState(null)}>
         {placementState ? (
           <div>
             <p>{players[placementState.player].name}の配置前ユニットを選択</p>
@@ -1054,8 +1047,54 @@ function App() {
                 ))
               )}
             </div>
-            {placementState.selectedUnitId ? <p>配置するマスをボードから選択してください。</p> : null}
-            {placementState.confirmCell ? <p>{placementState.confirmCell} に配置しますか？</p> : null}
+            <p>ユニットを選ぶとミニ配置面が表示され、そこから配置場所を決定できます。</p>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title="配置マス選択"
+        isOpen={miniPlacementOpen && Boolean(placementState?.selectedUnitId)}
+        onClose={cancelMiniPlacement}
+        footer={
+          <div className="modal-actions">
+            <button className="ghost" onClick={cancelMiniPlacement}>
+              キャンセル
+            </button>
+          </div>
+        }
+      >
+        {miniPlacementOpen && placementState ? (
+          <div>
+            <p>ミニ配置面から配置場所を選択してください。</p>
+            <div className="mini-board">
+              {rows.map((row) => (
+                <div key={row} className="mini-row">
+                  {columns.map((column) => {
+                    const cell = `${column}${row}` as BoardCell
+                    const occupant = boardMap.get(cell)
+                    const selectable = currentPlacementTargets.includes(cell)
+                    return (
+                      <button
+                        key={cell}
+                        className={`mini-cell ${selectable ? 'highlight' : ''}`}
+                        disabled={!selectable}
+                        onClick={() => handleMiniPlacement(cell)}
+                      >
+                        {occupant ? (
+                          <span className={`mini-piece mini-piece--${occupant.owner}`}>
+                            {baseDisplayNames[occupant.base][0]}
+                            <small>{classDisplayNames[occupant.role][0]}</small>
+                          </span>
+                        ) : (
+                          <span className="mini-cell__label">{column + row}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </Modal>

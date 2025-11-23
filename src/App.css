@@ -221,6 +221,60 @@ header h1 {
   box-shadow: 0 0 8px rgba(108, 243, 255, 0.6);
 }
 
+.mini-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.mini-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+}
+
+.mini-cell {
+  min-height: 46px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+}
+
+.mini-cell.highlight {
+  border-color: #6cf3ff;
+  box-shadow: 0 0 12px rgba(108, 243, 255, 0.4);
+}
+
+.mini-piece {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  padding: 0.1rem;
+}
+
+.mini-piece--A {
+  background: linear-gradient(135deg, #f5fbff, #bfc9ff);
+  color: #05132c;
+}
+
+.mini-piece--B {
+  background: linear-gradient(135deg, #2b2f3d, #0b0d16);
+  color: #f5f7ff;
+}
+
+.mini-piece small {
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
+
+.mini-cell__label {
+  opacity: 0.5;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
