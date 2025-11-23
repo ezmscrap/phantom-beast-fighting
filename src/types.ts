@@ -88,10 +88,12 @@ export type AudioCue =
 
 export interface DebugDiceSettings {
   dieSize: number
+  spawnHeight: number
   impulse: {
     x: number
     y: number
     z: number
     torque: number
+    minHorizontal: number
   }
 }

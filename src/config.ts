@@ -6,11 +6,13 @@ interface DiceDebugConfig {
   enabled: boolean
   preset: DebugDiceOption
   dieSize: number
+  spawnHeight: number
   impulse: {
     x: number
     y: number
     z: number
     torque: number
+    minHorizontal: number
   }
 }
 
@@ -23,11 +25,13 @@ export const appConfig: AppConfig = {
     enabled: false,
     preset: 'silver1',
     dieSize: 0.25,
+    spawnHeight: 4.5,
     impulse: {
       x: 6,
       y: 5,
       z: 6,
       torque: 6,
+      minHorizontal: 1.5,
     },
   },
 }

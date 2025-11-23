@@ -244,6 +244,7 @@ function App() {
       tallies: { swordsman: 0, mage: 0, tactician: 0 },
       debugSettings: {
         dieSize: appConfig.diceDebug.dieSize,
+        spawnHeight: appConfig.diceDebug.spawnHeight,
         impulse: appConfig.diceDebug.impulse,
       },
     })

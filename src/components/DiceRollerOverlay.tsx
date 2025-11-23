@@ -50,14 +50,14 @@ const DiceMesh = ({
   icons: Record<ClassType, THREE.Texture>
 }) => {
   const dieSize = settings.dieSize
-  const [ref, api] = useBox(() => ({
+  const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
-    mass: 0.6,
-    linearDamping: 0.12,
-    angularDamping: 0.08,
+    mass: 0.55,
+    linearDamping: 0.08,
+    angularDamping: 0.05,
     position: [
       (Math.random() - 0.5) * 1.5,
-      Math.random() * 1.5 + 4,
+      Math.random() * 0.5 + settings.spawnHeight,
       (Math.random() - 0.5) * 1.5,
     ],
     rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
@@ -65,10 +65,13 @@ const DiceMesh = ({
 
   useEffect(() => {
     if (!settled) {
-      const { x, y, z, torque } = settings.impulse
-      const random = (base: number) => (Math.random() - 0.5) * base
-      api.applyImpulse([random(x), y + Math.random() * 1.5, random(z)], [0, 0, 0])
-      api.applyTorque([random(torque), random(torque), random(torque)])
+      const { x, y, z, torque, minHorizontal } = settings.impulse
+      const horizontal = (base: number) => {
+        const direction = Math.random() < 0.5 ? -1 : 1
+        return direction * (minHorizontal + Math.random() * base)
+      }
+      api.applyImpulse([horizontal(x), y + Math.random() * 2, horizontal(z)], [0, 0, 0])
+      api.applyTorque([horizontal(torque), horizontal(torque), horizontal(torque)])
       return
     }
     const [x, y, z] = FACE_ROTATIONS[faceIndex]
@@ -80,7 +83,7 @@ const DiceMesh = ({
 
   const color = diceFaceColors[type]
   return (
-    <group ref={ref as React.MutableRefObject<THREE.Group>}>
+    <group ref={ref}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[dieSize, dieSize, dieSize]} />
         {[...Array(6)].map((_, index) => (
@@ -116,7 +119,7 @@ const DiceMesh = ({
 }
 
 const FloorAndWalls = () => {
-  const [floorRef] = usePlane(() => ({
+  const [floorRef] = usePlane<THREE.Mesh>(() => ({
     rotation: [-Math.PI / 2, 0, 0],
     position: [0, 0, 0],
     type: 'Static',
@@ -130,7 +133,7 @@ const FloorAndWalls = () => {
   }
 
   const createWall = (position: [number, number, number], rotation: [number, number, number]) => {
-    const [wallRef] = useBox(() => ({
+    const [wallRef] = useBox<THREE.Mesh>(() => ({
       args: [12, 4, 0.5],
       position,
       rotation,
@@ -204,7 +207,8 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
               settings={
                 settings ?? {
                   dieSize: 0.45,
-                  impulse: { x: 7, y: 5, z: 7, torque: 7 },
+                  spawnHeight: 4,
+                  impulse: { x: 7, y: 5, z: 7, torque: 7, minHorizontal: 1.2 },
                 }
               }
               icons={iconTextures}
