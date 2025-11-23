@@ -22,15 +22,6 @@ interface DiceRollerOverlayProps {
   settings?: DebugDiceSettings
 }
 
-const FACE_ROTATIONS: [number, number, number][] = [
-  [0, 0, -Math.PI / 2],
-  [0, 0, Math.PI / 2],
-  [0, 0, 0],
-  [Math.PI, 0, 0],
-  [Math.PI / 2, 0, 0],
-  [-Math.PI / 2, 0, 0],
-]
-
 const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
   silver: SILVER_FACES,
   gold: GOLD_FACES,
@@ -80,11 +71,6 @@ const DiceMesh = ({
       api.applyTorque([towardCenterX * 0.4, torque * (Math.random() - 0.5), lateralZ * 0.4])
       return
     }
-    const [x, y, z] = FACE_ROTATIONS[faceIndex]
-    api.rotation.set(x, y, z)
-    api.velocity.set(0, 0, 0)
-    api.angularVelocity.set(0, 0, 0)
-    api.position.set((Math.random() - 0.5) * 2, spawnHeight, (Math.random() - 0.5) * 2)
   }, [api, faceIndex, settled, settings])
 
   const color = diceFaceColors[type]
