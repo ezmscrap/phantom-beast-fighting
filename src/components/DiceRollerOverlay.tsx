@@ -274,27 +274,27 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, o
           <Physics gravity={[0, -9.81, 0]}>
             <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
             <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
-          {dice.map((item) => (
-            <DiceMesh
-              key={item.id}
-              type={item.type}
-              settled={settled}
-              settings={
-                settings ?? {
-                  dieSize: 0.45,
-                  spawnHeight: 4,
-                  impulse: { x: 7, y: 5, z: 7, torque: 7, minHorizontal: 1.2 },
+            {dice.map((item) => (
+              <DiceMesh
+                key={item.id}
+                type={item.type}
+                settled={settled}
+                settings={
+                  settings ?? {
+                    dieSize: 0.45,
+                    spawnHeight: 4,
+                    impulse: { x: 7, y: 5, z: 7, torque: 7, minHorizontal: 1.2 },
+                  }
                 }
-              }
-              icons={iconTextures}
-              material="dice-material"
-              onResult={(faceIndex, result) => (item.id, faceIndex, result)}
-            />
-          ))}
-        </Physics>
-        <Suspense fallback={null}>
-          <OrbitControls enablePan={false} enableZoom={false} />
-        </Suspense>
+                icons={iconTextures}
+                material="dice-material"
+                onResult={(faceIndex, result) => handleResult(item.id, faceIndex, result)}
+              />
+            ))}
+          </Physics>
+          <Suspense fallback={null}>
+            <OrbitControls enablePan={false} enableZoom={false} />
+          </Suspense>
         </Canvas>
       </div>
       <div className="dice-overlay__summary">

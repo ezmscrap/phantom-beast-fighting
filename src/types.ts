@@ -29,9 +29,24 @@ export interface PlayerState {
 
 export type DiceType = 'silver' | 'gold'
 
+export type DicePlacementStage = 0 | 1 | 2 | 3
+
+export interface DiceSlotState {
+  id: 'R1' | 'R2' | 'R3'
+  die: DiceType | null
+}
+
+export type ActionType = 'standard' | 'strategy' | 'comeback'
+
 export interface DiceSlot {
   id: 'R1' | 'R2' | 'R3'
   type: DiceType
+}
+
+export interface DiceRedistributionState {
+  type: 'strategy' | 'comeback'
+  options: Array<'R1' | 'R2' | 'R3'>
+  player: PlayerId
 }
 
 export type ProcedureStep =
@@ -57,6 +72,38 @@ export interface MovementBudget {
   mage: number
   tactician: number
 }
+
+export interface PlacementState {
+  player: PlayerId
+  selectedUnitId?: string
+  swapMode: boolean
+  swapSelection: string[]
+  stepTag?: ProcedureStep
+}
+
+export interface MovementState {
+  player: PlayerId
+  budget: MovementBudget
+  action: ActionType
+  diceUsed: DiceType[]
+  selectedUnitId?: string
+  destinations: BoardCell[]
+  locked: boolean
+}
+
+export interface ActionSelectionState {
+  player: PlayerId
+  value: ActionType
+}
+
+export interface MiniBoardState {
+  mode: 'placement' | 'swap'
+  player: PlayerId
+}
+
+export type NextActions = Record<PlayerId, ActionType | null>
+
+export type PendingCreations = Record<2 | 3 | 4 | 5, number>
 
 export interface DiceRollResult {
   faces: ClassType[]

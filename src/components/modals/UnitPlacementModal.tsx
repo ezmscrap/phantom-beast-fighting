@@ -1,0 +1,66 @@
+import { Modal } from '../Modal'
+import { baseDisplayNames, classDisplayNames } from '../../constants'
+import type { MiniBoardState, PlacementState, PlayerId, PlayerState, Unit } from '../../types'
+
+interface UnitPlacementModalProps {
+  placementState: PlacementState | null
+  players: Record<PlayerId, PlayerState>
+  activePlacementUnits: Unit[]
+  onSelectUnit: (unitId: string) => void
+  onToggleSwap: (enabled: boolean) => void
+  onOpenMiniBoard: (state: MiniBoardState) => void
+  onClose: () => void
+}
+
+export const UnitPlacementModal = ({
+  placementState,
+  players,
+  activePlacementUnits,
+  onSelectUnit,
+  onToggleSwap,
+  onOpenMiniBoard,
+  onClose,
+}: UnitPlacementModalProps) => (
+  <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={onClose}>
+    {placementState ? (
+      <div>
+        <p>{players[placementState.player].name}の配置前ユニットを選択</p>
+        <div className="unit-selection">
+          {activePlacementUnits.length === 0 ? (
+            <>
+              <p>配置前のユニットはありません。</p>
+              {placementState.swapMode ? (
+                <>
+                  <p>入れ替えたい配置済みユニットを2体選択してください。</p>
+                  <button onClick={() => onOpenMiniBoard({ mode: 'swap', player: placementState.player })}>
+                    ミニ配置面を開く
+                  </button>
+                  <button className="ghost" onClick={() => onToggleSwap(false)}>
+                    入れ替えを中止
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    onToggleSwap(true)
+                    onOpenMiniBoard({ mode: 'swap', player: placementState.player })
+                  }}
+                >
+                  配置済みユニットを入れ替える
+                </button>
+              )}
+            </>
+          ) : (
+            activePlacementUnits.map((unit) => (
+              <button key={unit.id} onClick={() => onSelectUnit(unit.id)}>
+                {baseDisplayNames[unit.base]}
+                {classDisplayNames[unit.role]}
+              </button>
+            ))
+          )}
+        </div>
+        <p>ユニットを選ぶとミニ配置面が表示され、そこから配置場所を決定できます。</p>
+      </div>
+    ) : null}
+  </Modal>
+)
