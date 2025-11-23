@@ -70,6 +70,12 @@ const DiceMesh = ({
       api.applyTorque([towardCenterX * 0.4, torque * 0.15, lateralZ * 0.4])
       return
     }
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+    const [x = 0, , z = 0] = ref.current?.position.toArray() ?? []
+    const limit = 3.5
+    if (Math.abs(x) > limit || Math.abs(z) > limit) {
+      api.position.set(clamp(x, -limit, limit), spawnHeight, clamp(z, -limit, limit))
+    }
   }, [api, faceIndex, settled, settings])
 
   const color = diceFaceColors[type]
