@@ -6,7 +6,7 @@ import {
   rows,
   stepDescriptions,
 } from './constants'
-import type { BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
+import type { ActionType, BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
 import type { DiceVisual } from './components/DiceRollerOverlay'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
@@ -194,6 +194,24 @@ function App() {
       goToNextStep()
     }
   }, [step, creationRemaining, pendingPlacementCount, goToNextStep])
+
+  useEffect(() => {
+    const actionMap: Partial<Record<ProcedureStep, ActionType>> = {
+      8: 'standard',
+      9: 'strategy',
+      10: 'comeback',
+      13: 'standard',
+      14: 'strategy',
+      15: 'comeback',
+    }
+    const requiredAction = actionMap[step]
+    if (!requiredAction) return
+    const expectedPlayer = activeStepPlayer
+    if (movementState || diceOverlay) return
+    if (nextActions[expectedPlayer] !== requiredAction) {
+      goToNextStep()
+    }
+  }, [step, nextActions, activeStepPlayer, movementState, diceOverlay, goToNextStep])
 
   const renderProcedureControls = () => {
     if (step === 1) {
