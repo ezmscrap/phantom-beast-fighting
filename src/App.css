@@ -331,11 +331,21 @@ header h1 {
   display: flex;
   flex-direction: column;
   pointer-events: none;
+  justify-content: center;
+  align-items: center;
 }
 
-.dice-overlay canvas {
-  flex: 1;
+.dice-stage {
+  width: 80vw;
+  height: 80vh;
+  max-width: 1100px;
+  max-height: 900px;
   pointer-events: auto;
+}
+
+.dice-stage canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .dice-overlay__summary {

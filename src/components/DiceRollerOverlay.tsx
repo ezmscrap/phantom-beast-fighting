@@ -44,8 +44,8 @@ const DiceMesh = ({
 }) => {
   const dieSize = settings.dieSize
   const spawnHeight = Math.max(settings.spawnHeight, 3)
-  const startX = 6
-  const startZ = 2
+  const startX = 3
+  const startZ = 0
   const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
     mass: 0.55,
@@ -63,11 +63,11 @@ const DiceMesh = ({
   useEffect(() => {
     if (!settled) {
       const { x, y, z, torque, minHorizontal } = settings.impulse
-      const towardCenterX = -(minHorizontal + Math.random() * x * 1.8)
-      const lateralZ = (Math.random() - 0.5) * z * 1.4
-      api.applyImpulse([towardCenterX, y + Math.random() * 3, lateralZ], [0, 0, 0])
-      api.velocity.set(towardCenterX * 0.3, y * 0.2, lateralZ * 0.3)
-      api.applyTorque([towardCenterX * 0.4, torque * (Math.random() - 0.5), lateralZ * 0.4])
+      const towardCenterX = -(minHorizontal + x * 1.2)
+      const lateralZ = (Math.random() - 0.5) * z * 0.4
+      api.applyImpulse([towardCenterX, y + 2.5, lateralZ], [0, 0, 0])
+      api.velocity.set(towardCenterX * 0.3, y * 0.18, lateralZ * 0.3)
+      api.applyTorque([towardCenterX * 0.4, torque * 0.15, lateralZ * 0.4])
       return
     }
   }, [api, faceIndex, settled, settings])
@@ -117,13 +117,6 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
     material: materials.floor,
   }))
 
-  const wallMaterialProps = {
-    color: '#cfe2ff',
-    opacity: 0.04,
-    transparent: true,
-    depthWrite: false,
-  }
-
   const createWall = (position: [number, number, number], rotation: [number, number, number]) => {
     const [wallRef] = useBox<THREE.Mesh>(() => ({
       args: [12, 4, 0.5],
@@ -132,24 +125,19 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
       type: 'Static',
       material: materials.wall,
     }))
-    return (
-      <mesh key={`${position.join('-')}`} ref={wallRef}>
-        <boxGeometry args={[12, 4, 0.5]} />
-        <meshPhysicalMaterial {...wallMaterialProps} />
-      </mesh>
-    )
+    return <mesh key={`${position.join('-')}`} ref={wallRef} />
   }
 
   return (
     <>
       <mesh ref={floorRef} receiveShadow>
-        <planeGeometry args={[20, 20]} />
-        <meshPhysicalMaterial color="#cfe2ff" opacity={0.03} transparent depthWrite={false} />
+        <planeGeometry args={[12, 12]} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
       </mesh>
-      {createWall([0, 2, -6], [0, 0, 0])}
-      {createWall([0, 2, 6], [0, 0, 0])}
-      {createWall([-6, 2, 0], [0, Math.PI / 2, 0])}
-      {createWall([6, 2, 0], [0, Math.PI / 2, 0])}
+      {createWall([0, 2, -3.8], [0, 0, 0])}
+      {createWall([0, 2, 3.8], [0, 0, 0])}
+      {createWall([-3.8, 2, 0], [0, Math.PI / 2, 0])}
+      {createWall([3.8, 2, 0], [0, Math.PI / 2, 0])}
     </>
   )
 }
@@ -195,12 +183,13 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
 
   return (
     <div className="dice-overlay">
-      <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [-6, 7, 6], fov: 40 }}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
-        <Physics gravity={[0, -9.81, 0]}>
-          <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
-          <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
+      <div className="dice-stage">
+        <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [-6, 7, 6], fov: 40 }}>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
+          <Physics gravity={[0, -9.81, 0]}>
+            <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
+            <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
           {dice.map((item) => (
             <DiceMesh
               key={item.id}
@@ -222,7 +211,8 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
         <Suspense fallback={null}>
           <OrbitControls enablePan={false} enableZoom={false} />
         </Suspense>
-      </Canvas>
+        </Canvas>
+      </div>
       <div className="dice-overlay__summary">
         <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
         {settled ? (
