@@ -325,6 +325,15 @@ function App() {
     setCreationSelection({})
   }
 
+  const handleOpenCreationRequest = useCallback(
+    (player: PlayerId, stepTag: ProcedureStep) => {
+      if (![2, 3, 4, 5].includes(stepTag)) return
+      setCreationRequest({ player, step: stepTag })
+      setCreationSelection({})
+    },
+    [setCreationRequest],
+  )
+
   const handleResetGame = () => {
     resetGame()
     resetDiceState()
@@ -561,6 +570,8 @@ function App() {
         onToggleSwap={toggleSwapMode}
         onOpenMiniBoard={(state) => setMiniBoardState(state)}
         onClose={() => setPlacementState(null)}
+        creationRemaining={creationRemaining}
+        onRequestCreation={handleOpenCreationRequest}
       />
 
       <MiniBoardModal

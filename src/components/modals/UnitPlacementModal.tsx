@@ -1,6 +1,13 @@
 import { Modal } from '../Modal'
 import { baseDisplayNames, classDisplayNames } from '../../constants'
-import type { MiniBoardState, PlacementState, PlayerId, PlayerState, Unit } from '../../types'
+import type {
+  MiniBoardState,
+  PlacementState,
+  PlayerId,
+  PlayerState,
+  ProcedureStep,
+  Unit,
+} from '../../types'
 
 interface UnitPlacementModalProps {
   placementState: PlacementState | null
@@ -10,6 +17,8 @@ interface UnitPlacementModalProps {
   onToggleSwap: (enabled: boolean) => void
   onOpenMiniBoard: (state: MiniBoardState) => void
   onClose: () => void
+  creationRemaining: Record<2 | 3 | 4 | 5, number>
+  onRequestCreation: (player: PlayerId, step: ProcedureStep) => void
 }
 
 export const UnitPlacementModal = ({
@@ -20,11 +29,27 @@ export const UnitPlacementModal = ({
   onToggleSwap,
   onOpenMiniBoard,
   onClose,
+  creationRemaining,
+  onRequestCreation,
 }: UnitPlacementModalProps) => (
   <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={onClose}>
     {placementState ? (
       <div>
         <p>{players[placementState.player].name}の配置前ユニットを選択</p>
+        {(() => {
+          const tag = placementState.stepTag
+          const canCreateMore =
+            tag && tag >= 2 && tag <= 5 && creationRemaining[tag as 2 | 3 | 4 | 5] > 0
+          if (!canCreateMore) return null
+          return (
+            <button
+              className="ghost"
+              onClick={() => onRequestCreation(placementState.player, tag as ProcedureStep)}
+            >
+              新しくユニットを作成する
+            </button>
+          )
+        })()}
         <div className="unit-selection">
           {activePlacementUnits.length === 0 ? (
             <>
