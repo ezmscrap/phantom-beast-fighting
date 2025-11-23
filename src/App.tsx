@@ -36,7 +36,7 @@ function App() {
     movementState,
     actionSelection,
     nextActions,
-    pendingCreations,
+    creationRemaining,
     creationRequest,
     creationSelection,
     miniBoardState,
@@ -113,7 +113,8 @@ function App() {
     step,
     diceRedistribution,
     placementState,
-    pendingCreations,
+    pendingCreations: creationRemaining,
+    pendingPlacementCount,
     dicePlacementStage,
     movementState,
     nextActions,
@@ -188,18 +189,18 @@ function App() {
 
   useEffect(() => {
     if (step < 2 || step > 5) return
-    const remaining = pendingCreations[step as 2 | 3 | 4 | 5]
+    const remaining = creationRemaining[step as 2 | 3 | 4 | 5]
     if (remaining === 0 && pendingPlacementCount === 0) {
       goToNextStep()
     }
-  }, [step, pendingCreations, pendingPlacementCount, goToNextStep])
+  }, [step, creationRemaining, pendingPlacementCount, goToNextStep])
 
   const renderProcedureControls = () => {
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
     }
     if (step >= 2 && step <= 5) {
-      const remaining = pendingCreations[step as 2 | 3 | 4 | 5]
+      const remaining = creationRemaining[step as 2 | 3 | 4 | 5]
       const hasPlacementCandidates = pendingPlacementCount > 0
       return (
         <>

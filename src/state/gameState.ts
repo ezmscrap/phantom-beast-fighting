@@ -23,14 +23,13 @@ import type {
   MovementBudget,
   MovementState,
   NextActions,
-  PendingCreations,
   PlacementState,
   PlayerId,
   ProcedureStep,
   Unit,
 } from '../types'
 
-const initialPending: PendingCreations = { 2: 3, 3: 3, 4: 2, 5: 2 }
+const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
 
 const createInitialPlayers = () => ({
   A: {
@@ -67,7 +66,6 @@ export const useGameState = () => {
   const [nextActions, setNextActions] = useState<NextActions>({ A: null, B: null })
   const [creationRequest, setCreationRequest] = useState<{ player: PlayerId; step: ProcedureStep } | null>(null)
   const [creationSelection, setCreationSelection] = useState<{ base?: BaseType; role?: ClassType }>({})
-  const [pendingCreations, setPendingCreations] = useState<PendingCreations>(() => ({ ...initialPending }))
   const [miniBoardState, setMiniBoardState] = useState<MiniBoardState | null>(null)
   const [nameStage, setNameStage] = useState<'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'>('names')
   const [nameDrafts, setNameDrafts] = useState({ A: 'プレイヤーA', B: 'プレイヤーB' })
@@ -98,6 +96,25 @@ export const useGameState = () => {
       },
     )
   }, [units])
+
+  const creationProgress = useMemo(() => {
+    const base = { 2: 0, 3: 0, 4: 0, 5: 0 }
+    return units.reduce((acc, unit) => {
+      if (unit.createdAtStep && acc[unit.createdAtStep as 2 | 3 | 4 | 5] !== undefined) {
+        acc[unit.createdAtStep as 2 | 3 | 4 | 5] += 1
+      }
+      return acc
+    }, { ...base })
+  }, [units])
+
+  const creationRemaining = useMemo(() => {
+    const steps: Array<2 | 3 | 4 | 5> = [2, 3, 4, 5]
+    return steps.reduce((acc, stepKey) => {
+      const required = creationRequirements[stepKey]
+      acc[stepKey] = Math.max(0, required - creationProgress[stepKey])
+      return acc
+    }, { ...creationRequirements } as Record<2 | 3 | 4 | 5, number>)
+  }, [creationProgress])
 
   const activePlacementUnits = useMemo(() => {
     if (!placementState) return []
@@ -136,6 +153,7 @@ export const useGameState = () => {
       base,
       role,
       status: 'preDeployment' as const,
+      createdAtStep: stepTag,
     }
     setUnits((prev) => [...prev, newUnit])
     setUnitCounter((prev) => prev + 1)
@@ -151,14 +169,6 @@ export const useGameState = () => {
     playAudio('button')
   }
 
-  const markCreationComplete = (stepTag?: ProcedureStep) => {
-    if (!stepTag || ![2, 3, 4, 5].includes(stepTag)) return
-    setPendingCreations((prev) => ({
-      ...prev,
-      [stepTag]: Math.max(0, prev[stepTag as 2 | 3 | 4 | 5] - 1),
-    }))
-  }
-
   const handlePlaceUnit = (unitId: string, cell: BoardCell) => {
     setUnits((prev) =>
       prev.map((unit) => {
@@ -168,7 +178,6 @@ export const useGameState = () => {
         return unit
       }),
     )
-    markCreationComplete(placementState?.stepTag)
     setPlacementState((prev) => {
       if (!prev) return prev
       return {
@@ -376,7 +385,6 @@ export const useGameState = () => {
     setStep(1)
     setLeadingPlayer('A')
     setNextActions({ A: null, B: null })
-    setPendingCreations({ ...initialPending })
     setCreationRequest(null)
     setCreationSelection({})
     setMovementState(null)
@@ -399,7 +407,6 @@ export const useGameState = () => {
     movementState,
     actionSelection,
     nextActions,
-    pendingCreations,
     creationRequest,
     creationSelection,
     miniBoardState,
@@ -413,6 +420,7 @@ export const useGameState = () => {
     activePlacementUnits,
     currentPlacementTargets,
     activeMovementUnits,
+    creationRemaining,
     setPlayers,
     setUnits,
     setStep,

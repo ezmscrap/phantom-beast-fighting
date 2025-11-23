@@ -16,6 +16,7 @@ export interface Unit {
   role: ClassType
   status: UnitStatus
   position?: BoardCell
+  createdAtStep?: ProcedureStep
 }
 
 export interface PlayerState {
@@ -102,8 +103,6 @@ export interface MiniBoardState {
 }
 
 export type NextActions = Record<PlayerId, ActionType | null>
-
-export type PendingCreations = Record<2 | 3 | 4 | 5, number>
 
 export interface DiceRollResult {
   faces: ClassType[]
