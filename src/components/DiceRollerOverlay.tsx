@@ -1,7 +1,7 @@
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Physics, useBox, usePlane } from '@react-three/cannon'
-import { Suspense, useEffect, useState } from 'react'
+import { Physics, useBox, usePlane, useContactMaterial } from '@react-three/cannon'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { TextureLoader } from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
@@ -42,43 +42,49 @@ const DiceMesh = ({
   settled,
   settings,
   icons,
+  material,
 }: {
   type: DiceType
   faceIndex: number
   settled: boolean
   settings: DebugDiceSettings
   icons: Record<ClassType, THREE.Texture>
+  material: string
 }) => {
   const dieSize = settings.dieSize
+  const spawnHeight = Math.max(settings.spawnHeight, 3)
+  const side = Math.random() < 0.5 ? -1 : 1
+  const startX = side * 5.5
+  const startZ = (Math.random() - 0.5) * 3
   const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
     mass: 0.55,
     linearDamping: 0.08,
     angularDamping: 0.05,
     position: [
-      (Math.random() - 0.5) * 1.5,
-      Math.random() * 0.5 + settings.spawnHeight,
-      (Math.random() - 0.5) * 1.5,
+      startX,
+      Math.random() * 0.5 + spawnHeight,
+      startZ,
     ],
     rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+    material,
   }))
 
   useEffect(() => {
     if (!settled) {
       const { x, y, z, torque, minHorizontal } = settings.impulse
-      const horizontal = (base: number) => {
-        const direction = Math.random() < 0.5 ? -1 : 1
-        return direction * (minHorizontal + Math.random() * base)
-      }
-      api.applyImpulse([horizontal(x), y + Math.random() * 2, horizontal(z)], [0, 0, 0])
-      api.applyTorque([horizontal(torque), horizontal(torque), horizontal(torque)])
+      const towardCenterX = -side * (minHorizontal + Math.random() * x * 1.8)
+      const lateralZ = (Math.random() - 0.5) * z * 1.4
+      api.applyImpulse([towardCenterX, y + Math.random() * 3, lateralZ], [0, 0, 0])
+      api.velocity.set(towardCenterX * 0.3, y * 0.2, lateralZ * 0.3)
+      api.applyTorque([towardCenterX * 0.4, torque * (Math.random() - 0.5), lateralZ * 0.4])
       return
     }
     const [x, y, z] = FACE_ROTATIONS[faceIndex]
     api.rotation.set(x, y, z)
     api.velocity.set(0, 0, 0)
     api.angularVelocity.set(0, 0, 0)
-    api.position.set((Math.random() - 0.5) * 2, dieSize, (Math.random() - 0.5) * 2)
+    api.position.set((Math.random() - 0.5) * 2, spawnHeight, (Math.random() - 0.5) * 2)
   }, [api, faceIndex, settled, settings])
 
   const color = diceFaceColors[type]
@@ -118,11 +124,12 @@ const DiceMesh = ({
   )
 }
 
-const FloorAndWalls = () => {
+const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string } }) => {
   const [floorRef] = usePlane<THREE.Mesh>(() => ({
     rotation: [-Math.PI / 2, 0, 0],
     position: [0, 0, 0],
     type: 'Static',
+    material: materials.floor,
   }))
 
   const wallMaterialProps = {
@@ -138,9 +145,10 @@ const FloorAndWalls = () => {
       position,
       rotation,
       type: 'Static',
+      material: materials.wall,
     }))
     return (
-      <mesh key={`${position.join('-')}`} ref={wallRef as React.MutableRefObject<THREE.Mesh>}>
+      <mesh key={`${position.join('-')}`} ref={wallRef}>
         <boxGeometry args={[12, 4, 0.5]} />
         <meshPhysicalMaterial {...wallMaterialProps} />
       </mesh>
@@ -149,7 +157,7 @@ const FloorAndWalls = () => {
 
   return (
     <>
-      <mesh ref={floorRef as React.MutableRefObject<THREE.Mesh>} receiveShadow>
+      <mesh ref={floorRef} receiveShadow>
         <planeGeometry args={[20, 20]} />
         <meshPhysicalMaterial color="#cfe2ff" opacity={0.03} transparent depthWrite={false} />
       </mesh>
@@ -167,8 +175,17 @@ const iconPaths: Record<ClassType, string> = {
   tactician: '/icons/chess.svg',
 }
 
+const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; friction: number; restitution: number }; wall: { name: string; friction: number; restitution: number }; dice: { name: string; friction: number; restitution: number } }) => {
+  useContactMaterial(floor, dice, { friction: 0.25, restitution: 0.5 })
+  useContactMaterial(wall, dice, { friction: 0.08, restitution: 0.35 })
+  return null
+}
+
 export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
+  const floorMaterial = useMemo(() => ({ name: 'floor', friction: 0.32, restitution: 0.45 }), [])
+  const wallMaterial = useMemo(() => ({ name: 'wall', friction: 0.06, restitution: 0.3 }), [])
+  const diceMaterial = useMemo(() => ({ name: 'dice', friction: 0.2, restitution: 0.6 }), [])
   const textures = useLoader(TextureLoader, Object.values(iconPaths))
   textures.forEach((texture) => {
     texture.colorSpace = THREE.SRGBColorSpace
@@ -193,11 +210,12 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
 
   return (
     <div className="dice-overlay">
-      <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [0, 6, 8], fov: 40 }}>
+      <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [-6, 7, 6], fov: 40 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
         <Physics gravity={[0, -9.81, 0]}>
-          <FloorAndWalls />
+          <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
+          <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
           {dice.map((item) => (
             <DiceMesh
               key={item.id}
@@ -212,6 +230,7 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
                 }
               }
               icons={iconTextures}
+              material="dice-material"
             />
           ))}
         </Physics>

@@ -24,8 +24,8 @@ export const appConfig: AppConfig = {
   diceDebug: {
     enabled: false,
     preset: 'silver1',
-    dieSize: 0.25,
-    spawnHeight: 4.5,
+    dieSize: 0.5,
+    spawnHeight: 5,
     impulse: {
       x: 6,
       y: 5,

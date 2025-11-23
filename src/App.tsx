@@ -1323,7 +1323,7 @@ function App() {
             生成高さ ({debugSettings.spawnHeight.toFixed(2)})
             <input
               type="range"
-              min="2"
+              min="3"
               max="10"
               step="0.1"
               value={debugSettings.spawnHeight}
