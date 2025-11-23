@@ -171,6 +171,11 @@ function App() {
   const [diceOverlay, setDiceOverlay] = useState<
     { dice: DiceVisual[]; tallies: MovementBudget; debugSettings?: DebugDiceSettings } | null
   >(null)
+  const [debugSettings, setDebugSettings] = useState<DebugDiceSettings>({
+    dieSize: appConfig.diceDebug.dieSize,
+    spawnHeight: appConfig.diceDebug.spawnHeight,
+    impulse: { ...appConfig.diceDebug.impulse },
+  })
   const [actionSelection, setActionSelection] = useState<ActionSelectionState | null>(null)
   const [nextActions, setNextActions] = useState<{ A: 'standard' | 'strategy' | 'comeback' | null; B: 'standard' | 'strategy' | 'comeback' | null }>(
     { A: null, B: null },
@@ -200,6 +205,11 @@ function App() {
 
   useEffect(() => {
     if (!appConfig.diceDebug.enabled) return
+    setDebugSettings({
+      dieSize: appConfig.diceDebug.dieSize,
+      spawnHeight: appConfig.diceDebug.spawnHeight,
+      impulse: { ...appConfig.diceDebug.impulse },
+    })
     setPlayers({
       A: {
         id: 'A',
@@ -1293,9 +1303,86 @@ function App() {
           </div>
         ) : null}
       </Modal>
+      {appConfig.diceDebug.enabled ? (
+        <section className="debug-panel">
+          <h3>ダイスデバッグ設定</h3>
+          <label>
+            サイコロサイズ ({debugSettings.dieSize.toFixed(2)})
+            <input
+              type="range"
+              min="0.2"
+              max="1.2"
+              step="0.05"
+              value={debugSettings.dieSize}
+              onChange={(e) =>
+                setDebugSettings((prev) => ({ ...prev, dieSize: parseFloat(e.target.value) || prev.dieSize }))
+              }
+            />
+          </label>
+          <label>
+            生成高さ ({debugSettings.spawnHeight.toFixed(2)})
+            <input
+              type="range"
+              min="2"
+              max="10"
+              step="0.1"
+              value={debugSettings.spawnHeight}
+              onChange={(e) =>
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  spawnHeight: parseFloat(e.target.value) || prev.spawnHeight,
+                }))
+              }
+            />
+          </label>
+          {(['x', 'y', 'z', 'torque', 'minHorizontal'] as const).map((axis) => (
+            <label key={axis}>
+              インパルス {axis} ({debugSettings.impulse[axis].toFixed(2)})
+              <input
+                type="range"
+                min={axis === 'y' ? 3 : 0}
+                max={axis === 'y' ? 12 : 15}
+                step="0.1"
+                value={debugSettings.impulse[axis]}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || debugSettings.impulse[axis]
+                  setDebugSettings((prev) => ({
+                    ...prev,
+                    impulse: { ...prev.impulse, [axis]: value },
+                  }))
+                }}
+              />
+            </label>
+          ))}
+          <button
+            onClick={() => {
+              if (diceOverlay) {
+                setDiceOverlay((prev) => (prev ? { ...prev, debugSettings } : prev))
+              } else {
+                const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
+                const visuals = diceTypes.map((type, index) => ({
+                  id: `debug-relaunch-${type}-${index}`,
+                  type,
+                  faceIndex: 0,
+                  result: 'swordsman' as ClassType,
+                }))
+                setDiceOverlay({ dice: visuals, tallies: { swordsman: 0, mage: 0, tactician: 0 }, debugSettings })
+              }
+            }}
+          >
+            現在の設定で再投擲
+          </button>
+        </section>
+      ) : null}
 
       {diceOverlay ? (
-        <DiceRollerOverlay dice={diceOverlay.dice} tallies={diceOverlay.tallies} visible onClose={confirmDiceResult} settings={diceOverlay.debugSettings} />
+        <DiceRollerOverlay
+          dice={diceOverlay.dice}
+          tallies={diceOverlay.tallies}
+          visible
+          onClose={confirmDiceResult}
+          settings={diceOverlay.debugSettings ?? debugSettings}
+        />
       ) : null}
 
       {victor ? (
