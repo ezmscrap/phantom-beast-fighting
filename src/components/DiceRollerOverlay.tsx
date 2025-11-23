@@ -44,9 +44,8 @@ const DiceMesh = ({
 }) => {
   const dieSize = settings.dieSize
   const spawnHeight = Math.max(settings.spawnHeight, 3)
-  const side = Math.random() < 0.5 ? -1 : 1
-  const startX = side * 5.5
-  const startZ = (Math.random() - 0.5) * 3
+  const startX = 6
+  const startZ = 2
   const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
     mass: 0.55,
@@ -64,7 +63,7 @@ const DiceMesh = ({
   useEffect(() => {
     if (!settled) {
       const { x, y, z, torque, minHorizontal } = settings.impulse
-      const towardCenterX = -side * (minHorizontal + Math.random() * x * 1.8)
+      const towardCenterX = -(minHorizontal + Math.random() * x * 1.8)
       const lateralZ = (Math.random() - 0.5) * z * 1.4
       api.applyImpulse([towardCenterX, y + Math.random() * 3, lateralZ], [0, 0, 0])
       api.velocity.set(towardCenterX * 0.3, y * 0.2, lateralZ * 0.3)
