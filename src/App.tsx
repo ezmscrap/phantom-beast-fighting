@@ -223,6 +223,15 @@ function App() {
     goToNextStep()
   }, [step, activeStepPlayer, players, nextActions, setNextActions, goToNextStep])
 
+  useEffect(() => {
+    if (step !== 11 && step !== 16) return
+    if (movementState || diceOverlay) return
+    const player = activeStepPlayer
+    if (victor !== player) {
+      goToNextStep()
+    }
+  }, [step, movementState, diceOverlay, activeStepPlayer, victor, goToNextStep])
+
   const renderProcedureControls = () => {
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
