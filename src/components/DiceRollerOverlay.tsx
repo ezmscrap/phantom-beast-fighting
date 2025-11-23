@@ -34,6 +34,8 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
   gold: GOLD_FACES,
 }
 
+const DIE_SIZE = 0.45
+
 const DiceMesh = ({
   type,
   faceIndex,
@@ -44,33 +46,30 @@ const DiceMesh = ({
   settled: boolean
 }) => {
   const [ref, api] = useBox(() => ({
-    args: [1, 1, 1],
-    mass: 1,
+    args: [DIE_SIZE, DIE_SIZE, DIE_SIZE],
+    mass: 0.65,
+    linearDamping: 0.15,
+    angularDamping: 0.1,
     position: [
-      (Math.random() - 0.5) * 2,
-      Math.random() * 2 + 5,
-      (Math.random() - 0.5) * 2,
+      (Math.random() - 0.5) * 1.5,
+      Math.random() * 1.5 + 4,
+      (Math.random() - 0.5) * 1.5,
     ],
     rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
   }))
 
   useEffect(() => {
     if (!settled) {
-      api.applyImpulse(
-        [
-          (Math.random() - 0.5) * 5,
-          Math.random() * 5 + 5,
-          (Math.random() - 0.5) * 5,
-        ],
-        [0, 0, 0],
-      )
+      const kick = () => (Math.random() - 0.5) * 7
+      api.applyImpulse([kick(), Math.random() * 4 + 4, kick()], [0, 0, 0])
+      api.applyTorque([kick(), kick(), kick()])
       return
     }
     const [x, y, z] = FACE_ROTATIONS[faceIndex]
     api.rotation.set(x, y, z)
     api.velocity.set(0, 0, 0)
     api.angularVelocity.set(0, 0, 0)
-    api.position.set((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2)
+    api.position.set((Math.random() - 0.5) * 2, 1.2, (Math.random() - 0.5) * 2)
   }, [api, faceIndex, settled])
 
   const color = diceFaceColors[type]
@@ -78,7 +77,7 @@ const DiceMesh = ({
   return (
     <group ref={ref as React.MutableRefObject<THREE.Group>}>
       <mesh castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} />
+        <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
         {[...Array(6)].map((_, index) => (
           <meshStandardMaterial key={index} color={color} />
         ))}
@@ -92,28 +91,29 @@ const DiceMesh = ({
           anchorY: 'middle' as const,
           children: label,
         }
+        const offset = DIE_SIZE / 2 + 0.04
         switch (index) {
           case 0:
             return (
-              <Text key={index} position={[0.51, 0, 0]} rotation={[0, Math.PI / 2, 0]} {...textProps} />
+              <Text key={index} position={[offset, 0, 0]} rotation={[0, Math.PI / 2, 0]} {...textProps} />
             )
           case 1:
             return (
-              <Text key={index} position={[-0.51, 0, 0]} rotation={[0, -Math.PI / 2, 0]} {...textProps} />
+              <Text key={index} position={[-offset, 0, 0]} rotation={[0, -Math.PI / 2, 0]} {...textProps} />
             )
           case 2:
-            return <Text key={index} position={[0, 0.51, 0]} rotation={[Math.PI / 2, 0, 0]} {...textProps} />
+            return <Text key={index} position={[0, offset, 0]} rotation={[Math.PI / 2, 0, 0]} {...textProps} />
           case 3:
             return (
-              <Text key={index} position={[0, -0.51, 0]} rotation={[-Math.PI / 2, 0, 0]} {...textProps} />
+              <Text key={index} position={[0, -offset, 0]} rotation={[-Math.PI / 2, 0, 0]} {...textProps} />
             )
           case 4:
             return (
-              <Text key={index} position={[0, 0, 0.51]} rotation={[0, 0, 0]} {...textProps} />
+              <Text key={index} position={[0, 0, offset]} rotation={[0, 0, 0]} {...textProps} />
             )
           case 5:
             return (
-              <Text key={index} position={[0, 0, -0.51]} rotation={[0, Math.PI, 0]} {...textProps} />
+              <Text key={index} position={[0, 0, -offset]} rotation={[0, Math.PI, 0]} {...textProps} />
             )
           default:
             return null
@@ -132,7 +132,7 @@ const FloorAndWalls = () => {
 
   const wallMaterialProps = {
     color: '#cfe2ff',
-    opacity: 0.1,
+    opacity: 0.04,
     transparent: true,
     depthWrite: false,
   }
@@ -156,7 +156,7 @@ const FloorAndWalls = () => {
     <>
       <mesh ref={floorRef as React.MutableRefObject<THREE.Mesh>} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshPhysicalMaterial color="#cfe2ff" opacity={0.08} transparent depthWrite={false} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.03} transparent depthWrite={false} />
       </mesh>
       {createWall([0, 2, -6], [0, 0, 0])}
       {createWall([0, 2, 6], [0, 0, 0])}
@@ -182,8 +182,7 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies }: DiceRolle
 
   return (
     <div className="dice-overlay">
-      <Canvas shadows camera={{ position: [0, 6, 8], fov: 40 }}>
-        <color attach="background" args={['#05060a']} />
+      <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [0, 6, 8], fov: 40 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
         <Physics gravity={[0, -9.81, 0]}>
