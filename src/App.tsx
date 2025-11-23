@@ -185,7 +185,7 @@ function App() {
     player: PlayerId
   } | null>(null)
   const [redistributionChoice, setRedistributionChoice] = useState<'R1' | 'R2' | 'R3'>('R1')
-  const [miniPlacementOpen, setMiniPlacementOpen] = useState(false)
+  const [miniBoardState, setMiniBoardState] = useState<{ mode: 'placement' | 'swap'; player: PlayerId } | null>(null)
   const [nameStage, setNameStage] = useState<'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'>(
     'names',
   )
@@ -196,7 +196,7 @@ function App() {
 
   useEffect(() => {
     if (!placementState) {
-      setMiniPlacementOpen(false)
+      setMiniBoardState(null)
     }
   }, [placementState])
 
@@ -576,8 +576,9 @@ function App() {
   }, [placementState, boardMap])
 
   const placementSelectionHandler = (unitId: string) => {
-    setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: unitId } : prev))
-    setMiniPlacementOpen(true)
+    if (!placementState) return
+    setPlacementState({ ...placementState, selectedUnitId: unitId })
+    setMiniBoardState({ mode: 'placement', player: placementState.player })
   }
 
   const handleSwapUnits = (firstId: string, secondId: string) => {
@@ -595,6 +596,10 @@ function App() {
         return unit
       }),
     )
+    setPlacementState((prev) =>
+      prev ? { ...prev, swapMode: false, swapSelection: [] } : prev,
+    )
+    setMiniBoardState((state) => (state?.mode === 'swap' ? null : state))
     playAudio('unitPlace')
   }
 
@@ -611,16 +616,33 @@ function App() {
     })
   }
 
-  const handleMiniPlacement = (cell: BoardCell) => {
-    if (!placementState?.selectedUnitId) return
-    if (!currentPlacementTargets.includes(cell)) return
-    handlePlaceUnit(placementState.selectedUnitId, cell)
-    setMiniPlacementOpen(false)
+  const handleMiniBoardClick = (cell: BoardCell) => {
+    if (!placementState || !miniBoardState) return
+    if (miniBoardState.mode === 'placement') {
+      if (!placementState.selectedUnitId) return
+      if (!currentPlacementTargets.includes(cell)) return
+      handlePlaceUnit(placementState.selectedUnitId, cell)
+      setMiniBoardState(null)
+      return
+    }
+    const occupant = boardMap.get(cell)
+    if (!occupant || occupant.owner !== miniBoardState.player) return
+    const hadOne = placementState.swapSelection.length === 1
+    handleSwapSelection(occupant.id)
+    if (hadOne) {
+      setMiniBoardState(null)
+    }
   }
 
-  const cancelMiniPlacement = () => {
-    setMiniPlacementOpen(false)
-    setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: undefined } : prev))
+  const cancelMiniBoard = () => {
+    setMiniBoardState((state) => {
+      if (state?.mode === 'placement') {
+        setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: undefined } : prev))
+      } else if (state?.mode === 'swap') {
+        setPlacementState((prev) => (prev ? { ...prev, swapSelection: [] } : prev))
+      }
+      return null
+    })
     playAudio('cancel')
   }
 
@@ -1026,6 +1048,9 @@ function App() {
                   {placementState.swapMode ? (
                     <>
                       <p>入れ替えたい配置済みユニットを2体選択してください。</p>
+                      <button onClick={() => setMiniBoardState({ mode: 'swap', player: placementState.player })}>
+                        ミニ配置面を開く
+                      </button>
                       <button
                         className="ghost"
                         onClick={() => setPlacementState({ ...placementState, swapMode: false, swapSelection: [] })}
@@ -1034,7 +1059,12 @@ function App() {
                       </button>
                     </>
                   ) : (
-                    <button onClick={() => setPlacementState({ ...placementState, swapMode: true })}>
+                    <button
+                      onClick={() => {
+                        setPlacementState({ ...placementState, swapMode: true, swapSelection: [] })
+                        setMiniBoardState({ mode: 'swap', player: placementState.player })
+                      }}
+                    >
                       配置済みユニットを入れ替える
                     </button>
                   )}
@@ -1053,33 +1083,44 @@ function App() {
       </Modal>
 
       <Modal
-        title="配置マス選択"
-        isOpen={miniPlacementOpen && Boolean(placementState?.selectedUnitId)}
-        onClose={cancelMiniPlacement}
+        title={miniBoardState?.mode === 'swap' ? 'ユニット入れ替え' : '配置マス選択'}
+        isOpen={Boolean(miniBoardState)}
+        onClose={cancelMiniBoard}
         footer={
           <div className="modal-actions">
-            <button className="ghost" onClick={cancelMiniPlacement}>
+            <button className="ghost" onClick={cancelMiniBoard}>
               キャンセル
             </button>
           </div>
         }
       >
-        {miniPlacementOpen && placementState ? (
+        {miniBoardState && placementState ? (
           <div>
-            <p>ミニ配置面から配置場所を選択してください。</p>
+            <p>
+              {miniBoardState.mode === 'swap'
+                ? '入れ替える自分のユニットを2体選択してください。'
+                : 'ミニ配置面から配置場所を選択してください。'}
+            </p>
             <div className="mini-board">
               {rows.map((row) => (
                 <div key={row} className="mini-row">
                   {columns.map((column) => {
                     const cell = `${column}${row}` as BoardCell
                     const occupant = boardMap.get(cell)
-                    const selectable = currentPlacementTargets.includes(cell)
+                    const selectable =
+                      miniBoardState.mode === 'placement'
+                        ? currentPlacementTargets.includes(cell)
+                        : Boolean(occupant && occupant.owner === miniBoardState.player)
+                    const swapChosen =
+                      miniBoardState.mode === 'swap' && occupant
+                        ? placementState.swapSelection.includes(occupant.id)
+                        : false
                     return (
                       <button
                         key={cell}
-                        className={`mini-cell ${selectable ? 'highlight' : ''}`}
+                        className={`mini-cell ${selectable ? 'highlight' : ''} ${swapChosen ? 'swap-selected' : ''}`}
                         disabled={!selectable}
-                        onClick={() => handleMiniPlacement(cell)}
+                        onClick={() => handleMiniBoardClick(cell)}
                       >
                         {occupant ? (
                           <span className={`mini-piece mini-piece--${occupant.owner}`}>
