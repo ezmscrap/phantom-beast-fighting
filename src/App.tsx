@@ -22,6 +22,7 @@ import type {
   BaseType,
   BoardCell,
   ClassType,
+  DebugDiceSettings,
   DiceType,
   MovementBudget,
   PlayerId,
@@ -32,6 +33,7 @@ import './App.css'
 import { Modal } from './components/Modal'
 import { DiceRollerOverlay, type DiceVisual } from './components/DiceRollerOverlay'
 import { playAudio } from './audio'
+import { appConfig, resolvePresetDice } from './config'
 
 const diceSlotIds: Array<'R1' | 'R2' | 'R3'> = ['R1', 'R2', 'R3']
 
@@ -166,7 +168,9 @@ function App() {
   const [dicePlacementStage, setDicePlacementStage] = useState<DicePlacementStage>(0)
   const [placementState, setPlacementState] = useState<PlacementState | null>(null)
   const [movementState, setMovementState] = useState<MovementState | null>(null)
-  const [diceOverlay, setDiceOverlay] = useState<{ dice: DiceVisual[]; tallies: MovementBudget } | null>(null)
+  const [diceOverlay, setDiceOverlay] = useState<
+    { dice: DiceVisual[]; tallies: MovementBudget; debugSettings?: DebugDiceSettings } | null
+  >(null)
   const [actionSelection, setActionSelection] = useState<ActionSelectionState | null>(null)
   const [nextActions, setNextActions] = useState<{ A: 'standard' | 'strategy' | 'comeback' | null; B: 'standard' | 'strategy' | 'comeback' | null }>(
     { A: null, B: null },
@@ -193,6 +197,57 @@ function App() {
   const [nameLocks, setNameLocks] = useState({ A: false, B: false })
   const [initiativeChoice, setInitiativeChoice] = useState<PlayerId>('A')
   const [victor, setVictor] = useState<PlayerId | null>(null)
+
+  useEffect(() => {
+    if (!appConfig.diceDebug.enabled) return
+    setPlayers({
+      A: {
+        id: 'A',
+        name: 'テストA',
+        color: 'white',
+        energy: 0,
+        baseCards: { dragon: 0, griffin: 0, unicorn: 0 },
+        classCards: { tactician: 0, mage: 0, swordsman: 0 },
+      },
+      B: {
+        id: 'B',
+        name: 'テストB',
+        color: 'black',
+        energy: 0,
+        baseCards: { dragon: 0, griffin: 0, unicorn: 0 },
+        classCards: { tactician: 0, mage: 0, swordsman: 0 },
+      },
+    })
+    setUnits([
+      { id: 'dbg-A1', owner: 'A', base: 'dragon', role: 'mage', status: 'deployed', position: 'A2' },
+      { id: 'dbg-A2', owner: 'A', base: 'unicorn', role: 'mage', status: 'deployed', position: 'B2' },
+      { id: 'dbg-A3', owner: 'A', base: 'griffin', role: 'swordsman', status: 'deployed', position: 'C2' },
+      { id: 'dbg-A4', owner: 'A', base: 'unicorn', role: 'swordsman', status: 'deployed', position: 'D2' },
+      { id: 'dbg-A5', owner: 'A', base: 'griffin', role: 'tactician', status: 'deployed', position: 'E2' },
+      { id: 'dbg-B1', owner: 'B', base: 'dragon', role: 'mage', status: 'deployed', position: 'A5' },
+      { id: 'dbg-B2', owner: 'B', base: 'unicorn', role: 'mage', status: 'deployed', position: 'B5' },
+      { id: 'dbg-B3', owner: 'B', base: 'griffin', role: 'swordsman', status: 'deployed', position: 'C5' },
+      { id: 'dbg-B4', owner: 'B', base: 'unicorn', role: 'swordsman', status: 'deployed', position: 'D5' },
+      { id: 'dbg-B5', owner: 'B', base: 'griffin', role: 'tactician', status: 'deployed', position: 'E5' },
+    ])
+    setLeadingPlayer('A')
+    setStep(8)
+    const presetDice = resolvePresetDice(appConfig.diceDebug.preset)
+    const visuals: DiceVisual[] = presetDice.map((type, index) => ({
+      id: `debug-${type}-${index}`,
+      type,
+      faceIndex: 0,
+      result: 'swordsman',
+    }))
+    setDiceOverlay({
+      dice: visuals,
+      tallies: { swordsman: 0, mage: 0, tactician: 0 },
+      debugSettings: {
+        dieSize: appConfig.diceDebug.dieSize,
+        impulse: appConfig.diceDebug.impulse,
+      },
+    })
+  }, [])
 
   useEffect(() => {
     if (!placementState) {
@@ -1239,7 +1294,7 @@ function App() {
       </Modal>
 
       {diceOverlay ? (
-        <DiceRollerOverlay dice={diceOverlay.dice} tallies={diceOverlay.tallies} visible onClose={confirmDiceResult} />
+        <DiceRollerOverlay dice={diceOverlay.dice} tallies={diceOverlay.tallies} visible onClose={confirmDiceResult} settings={diceOverlay.debugSettings} />
       ) : null}
 
       {victor ? (

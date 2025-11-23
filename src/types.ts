@@ -85,3 +85,13 @@ export type AudioCue =
   | 'swordAttack'
   | 'mageAttack'
   | 'tacticianAttack'
+
+export interface DebugDiceSettings {
+  dieSize: number
+  impulse: {
+    x: number
+    y: number
+    z: number
+    torque: number
+  }
+}

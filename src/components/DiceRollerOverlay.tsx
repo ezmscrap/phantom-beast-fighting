@@ -4,7 +4,7 @@ import { Physics, useBox, usePlane } from '@react-three/cannon'
 import { Suspense, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors, diceFaceLabels } from '../constants'
-import type { ClassType, DiceType, MovementBudget } from '../types'
+import type { ClassType, DebugDiceSettings, DiceType, MovementBudget } from '../types'
 
 export interface DiceVisual {
   id: string
@@ -18,6 +18,7 @@ interface DiceRollerOverlayProps {
   tallies: MovementBudget
   visible: boolean
   onClose: () => void
+  settings?: DebugDiceSettings
 }
 
 const FACE_ROTATIONS: [number, number, number][] = [
@@ -34,22 +35,23 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
   gold: GOLD_FACES,
 }
 
-const DIE_SIZE = 0.45
-
 const DiceMesh = ({
   type,
   faceIndex,
   settled,
+  settings,
 }: {
   type: DiceType
   faceIndex: number
   settled: boolean
+  settings: DebugDiceSettings
 }) => {
+  const dieSize = settings.dieSize
   const [ref, api] = useBox(() => ({
-    args: [DIE_SIZE, DIE_SIZE, DIE_SIZE],
-    mass: 0.65,
-    linearDamping: 0.15,
-    angularDamping: 0.1,
+    args: [dieSize, dieSize, dieSize],
+    mass: 0.6,
+    linearDamping: 0.12,
+    angularDamping: 0.08,
     position: [
       (Math.random() - 0.5) * 1.5,
       Math.random() * 1.5 + 4,
@@ -60,24 +62,25 @@ const DiceMesh = ({
 
   useEffect(() => {
     if (!settled) {
-      const kick = () => (Math.random() - 0.5) * 7
-      api.applyImpulse([kick(), Math.random() * 4 + 4, kick()], [0, 0, 0])
-      api.applyTorque([kick(), kick(), kick()])
+      const { x, y, z, torque } = settings.impulse
+      const random = (base: number) => (Math.random() - 0.5) * base
+      api.applyImpulse([random(x), y + Math.random() * 1.5, random(z)], [0, 0, 0])
+      api.applyTorque([random(torque), random(torque), random(torque)])
       return
     }
     const [x, y, z] = FACE_ROTATIONS[faceIndex]
     api.rotation.set(x, y, z)
     api.velocity.set(0, 0, 0)
     api.angularVelocity.set(0, 0, 0)
-    api.position.set((Math.random() - 0.5) * 2, 1.2, (Math.random() - 0.5) * 2)
-  }, [api, faceIndex, settled])
+    api.position.set((Math.random() - 0.5) * 2, dieSize, (Math.random() - 0.5) * 2)
+  }, [api, faceIndex, settled, settings])
 
   const color = diceFaceColors[type]
   const textColor = type === 'gold' ? '#2c1900' : '#123c6b'
   return (
     <group ref={ref as React.MutableRefObject<THREE.Group>}>
       <mesh castShadow receiveShadow>
-        <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
+        <boxGeometry args={[dieSize, dieSize, dieSize]} />
         {[...Array(6)].map((_, index) => (
           <meshStandardMaterial key={index} color={color} />
         ))}
@@ -91,7 +94,7 @@ const DiceMesh = ({
           anchorY: 'middle' as const,
           children: label,
         }
-        const offset = DIE_SIZE / 2 + 0.04
+        const offset = dieSize / 2 + 0.04
         switch (index) {
           case 0:
             return (
@@ -166,7 +169,7 @@ const FloorAndWalls = () => {
   )
 }
 
-export const DiceRollerOverlay = ({ dice, visible, onClose, tallies }: DiceRollerOverlayProps) => {
+export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
 
   useEffect(() => {
@@ -188,7 +191,18 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies }: DiceRolle
         <Physics gravity={[0, -9.81, 0]}>
           <FloorAndWalls />
           {dice.map((item) => (
-            <DiceMesh key={item.id} type={item.type} faceIndex={item.faceIndex} settled={settled} />
+            <DiceMesh
+              key={item.id}
+              type={item.type}
+              faceIndex={item.faceIndex}
+              settled={settled}
+              settings={
+                settings ?? {
+                  dieSize: 0.45,
+                  impulse: { x: 7, y: 5, z: 7, torque: 7 },
+                }
+              }
+            />
           ))}
         </Physics>
         <Suspense fallback={null}>
