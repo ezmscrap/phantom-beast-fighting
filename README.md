@@ -1,47 +1,77 @@
-# 幻獣闘技
+# 幻獣闘技 SPA
 
-この二人用オンライン専用ボードゲームSPAは、ふわふわ盤友会(@ff_boardgames)さまが作成されたボードゲーム「幻獣闘技」SPA化したものです。
+ふわふわ盤友会(@ff_boardgames)さまが制作されたボードゲーム「幻獣闘技」を、TypeScript + React + Vite で SPA 化した二人用オンラインボードゲームです。ファンアート的な実装であり、公式の許諾等は得られていません。作者: いずむ(@ezmscrap)
 
-SPA版「幻獣闘技」は、6×5の戦場とサイコロ置き場、兵種残数、エネルギートークンを表示する領域を持ちます。
-作成は いずむ(@ezmscrap)であり、許諾は受けておらず、 「幻獣闘技」に感銘を受けたため、SPA開発の練習も兼ねて実装しています。
+## 主な特徴
 
+- 6×5 の戦場、サイコロ置き場、残存兵種一覧、エネルギートークンを含む UI をブラウザ内で再現。
+- 先行決定から勝利判定まで 16 ステップ・11 独立手順をモーダルとハイライトで案内。
+- `@react-three/fiber` + `@react-three/cannon` による 3D ダイス演出。停止後は上向きの面を解析し、兵種別移動可能数を自動算出します。
+- デバッグモードではサイコロのサイズ/生成高さ/インパルスをリアルタイムに調整可能。
+- 主要ルールや仕様は [docs/specification.md](docs/specification.md) に簡易メモを残しています。
 
-## セットアップ
+## 技術アーキテクチャ
 
-```bash
-npm install
-npm run dev
+| 分類 | 内容 |
+| --- | --- |
+| フロントエンド | Vite + React 18 + TypeScript |
+| 3D/物理 | `three`, `@react-three/fiber`, `@react-three/cannon` |
+| UI スタイル | 独自 CSS (`src/App.css`, `src/index.css`) |
+| アイコン/音声 | Material Symbols Outlined、Springin’ Sound Stock |
+| 状態管理 | React Hooks (`useState`, `useMemo`, `useReducer` なし) |
+
+## ディレクトリ構成
+
+```
+.
+├── src/
+│   ├── App.tsx              # 主要ロジック（手順進行・状態管理）
+│   ├── components/
+│   │   ├── DiceRollerOverlay.tsx  # ダイス描画/物理
+│   │   └── Modal.tsx
+│   ├── constants.ts         # ラベルや初期値
+│   ├── types.ts             # 型定義
+│   ├── audio.ts             # 効果音再生ヘルパー
+│   ├── main.tsx / index.css # エントリーポイント
+│   └── App.css              # 画面スタイル
+├── public/
+│   ├── audio/               # 効果音
+│   └── icons/               # ダイス面アイコン
+├── docs/
+│   ├── specification.md     # 仕様メモ
+│   ├── todo.md              # リファクタリング TODO
+│   └── function-reference.md# 関数仕様
+├── package.json / tsconfig*.json / vite.config.ts
+└── README.md
 ```
 
-- `npm run build` … 型チェック+本番ビルド
-- `npm run preview` … ビルド済み成果物の確認
+## セットアップ & スクリプト
 
-## 画面構成と主な機能
+```bash
+npm install             # 依存関係のインストール
+npm run dev             # 開発サーバ (http://localhost:5173 など)
+npm run build           # 型チェック + 本番ビルド
+npm run preview         # ビルド済み成果物をローカルで確認
+```
 
-- **ゲームボード**: 6行×5列のマスをクリックしてユニット配置・移動・入れ替えを実行。配置可能マスや移動可能マスはハイライトで案内されます。
-- **サイコロ群置き場**: R1↔R3の3スロット。ステップ6で銀→銀→金の順に配置し、通常/作戦/起死回生アクション後は仕様どおり再配置します。
-- **プレイヤーパネル**: 兵種別残数、ユニット作成用カード残数、エネルギートークン(右からT1/T2/T3)を表示。どれかの兵種が0になると敗北が宣言されます。
-- **手順パネル**: 現在の手順、対象プレイヤー、必要な操作（ユニット作成、次アクション選択、ダイスロールなど）を表示し、完了できるときのみ「手順完了」ボタンが有効になります。
-- **モーダル群**: プレイヤー名/先行決定、ユニット作成、ユニット配置、次アクション選択、ダイス再配置、3Dダイスロールなど、仕様に沿ったモーダルを実装しています。
-- **3Dダイス演出**: `@react-three/fiber`+`@react-three/cannon`で銀/金ダイスを物理演算。各面に剣士/魔術師/策士のマークを表示し、結果と画面下のテキストが一致します。
+## デバッグモードについて
 
-## 操作の流れ
+`src/config.ts` の `appConfig.diceDebug.enabled` を `true` にすると以下が有効になります。
+- プレイヤー名/ユニットをテスト用に固定。
+- 画面左側に「ダイスデバッグ設定」パネルが表示され、サイコロのサイズ/高さ/インパルスを調整可能。
+- 画面表示と同時にダイス演出が開始され、兵種別移動可能数も通常と同様に表示されます。
 
-1. 手順1のモーダルでプレイヤー名を確定し、ラジオボタンで先行を決定します。
-2. 手順2〜5では案内に従ってユニット作成→配置を所定回数繰り返し、配置前ユニットがない場合は「配置済みユニットを入れ替える」を選択できます。
-3. 手順6でサイコロを配置し、以降は手順7→16を周回します。エネルギー0の場合は自動で通常アクションが選ばれます。
-4. 通常/作戦/起死回生アクションでは使用するダイス数に応じた演出が走り、得られた兵種別移動可能数が0になるまで移動します（敵を除外した時点で終了）。
-5. ユニット除外時や策士移動時にエネルギーが加算され、勝利条件を満たすと全画面オーバーレイで勝者を表示。再戦ボタンで初期化できます。
+## 既知の注意点 / リファクタリング
 
-## 謝辞
+- `App.tsx` に状態が集中しているため、リファクタリング時は副作用 (`useEffect`) やモーダル状態の依存関係に注意。
+- 仕様の抜粋は [docs/specification.md](docs/specification.md) を参照し、不明点は該当ソースを確認してください。
+- TODO や改善案を [docs/todo.md](docs/todo.md) に記録しています。
 
-### 原作「幻獣闘技」
+## 謝辞 / クレジット
 
-[ふわふわ盤友会](https://www.x.com/ff_boardgames)が開発したボードゲーム
-
-### 効果音クレジット
-
-すべて [Springin’ Sound Stock](https://www.springin.org/sound-stock/) の音源を規約に従って使用しています。
+- **原作**: [ふわふわ盤友会](https://x.com/ff_boardgames) 「幻獣闘技」。
+- **サウンド**: [Springin’ Sound Stock](https://www.springin.org/sound-stock/)。詳細は下表参照。
+- **アイコン**: Material Symbols Outlined（Swords / Auto Fix High / Chess）。
 
 | 用途 | 音源名 (カテゴリ) | ファイル |
 | --- | --- | --- |
@@ -57,12 +87,15 @@ npm run dev
 | 単独ダイスロール | 大きいシングルダイス2（生活#サイコロ） | `public/audio/dice_single.mp3` |
 | 複数ダイスロール | 大きいダブルダイス2（生活#サイコロ） | `public/audio/dice_multi.mp3` |
 | キャンセル | キャンセル（ボタン・システム） | `public/audio/cancel.mp3` |
+| サイコロ面 | Material Symbols Outlined (Swords / Auto Fix High / Chess) | `public/icons/*.svg` |
 
-ライセンス・利用方法の詳細は [Springin’ Sound Stock のガイドライン](https://www.springin.org/sound-stock/guideline/) を参照してください。
+ライセンス・利用方法の詳細は [Springin’ Sound Stock ガイドライン](https://www.springin.org/sound-stock/guideline/) を参照してください。
 
-### アイコンクレジット
+## 貢献について
 
-| 用途 | アイコン名 (カテゴリ) | ファイル |
-| --- | --- | --- |
-| サイコロアイコン | Material Symbols Outlined (Swords / Auto Fix High / Chess) | `public/icons/*.svg` |
+PR / Issue は歓迎します。仕様上ファンアートであることをご理解のうえ、以下を意識してください。
+- 仕様の変更は [docs/specification.md](docs/specification.md) を更新した上で PR を送付。
+- 大規模なリファクタリングは [docs/todo.md](docs/todo.md) に記載された注意点を確認してください。
 
+---
+© 2025 いずむ(@ezmscrap). Fan implementation of「幻獣闘技」。

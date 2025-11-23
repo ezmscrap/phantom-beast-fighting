@@ -22,9 +22,9 @@ export interface AppConfig {
 
 export const appConfig: AppConfig = {
   diceDebug: {
-    enabled: false,
-    preset: 'silver1',
-    dieSize: 0.5,
+    enabled: true,
+    preset: 'mixedSSG',
+    dieSize: 0.75,
     spawnHeight: 5,
     impulse: {
       x: 6,

@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  GOLD_FACES,
   INITIAL_BASE_CARDS,
   INITIAL_CLASS_CARDS,
-  SILVER_FACES,
   actionCosts,
   baseDisplayNames,
   baseMoveAudio,
@@ -145,19 +143,6 @@ const computeLegalMoves = (
   return results
 }
 
-const rollDiceSet = (dice: DiceType[]) => {
-  const visuals: DiceVisual[] = []
-  const tallies: MovementBudget = { swordsman: 0, mage: 0, tactician: 0 }
-  dice.forEach((type, index) => {
-    const definitions = type === 'silver' ? SILVER_FACES : GOLD_FACES
-    const faceIndex = Math.floor(Math.random() * definitions.length) as number
-    const result = definitions[faceIndex]
-    tallies[result] += 1
-    visuals.push({ id: `${type}-${index}-${Date.now()}`, type, faceIndex, result })
-  })
-  return { visuals, tallies }
-}
-
 function App() {
   const [players, setPlayers] = useState(() => createInitialPlayers())
   const [units, setUnits] = useState<Unit[]>([])
@@ -243,10 +228,14 @@ function App() {
     setLeadingPlayer('A')
     setStep(8)
     const presetDice = resolvePresetDice(appConfig.diceDebug.preset)
-    const roll = rollDiceSet(presetDice)
+    const visuals: DiceVisual[] = presetDice.map((type, index) => ({
+      id: `debug-${Date.now()}-${index}`,
+      type,
+    }))
+    const emptyTallies: MovementBudget = { swordsman: 0, mage: 0, tactician: 0 }
     setDiceOverlay({
-      dice: roll.visuals,
-      tallies: roll.tallies,
+      dice: visuals,
+      tallies: emptyTallies,
       debugSettings: {
         dieSize: appConfig.diceDebug.dieSize,
         spawnHeight: appConfig.diceDebug.spawnHeight,
@@ -434,17 +423,28 @@ function App() {
   const startDiceRoll = (player: PlayerId, action: 'standard' | 'strategy' | 'comeback', dice: DiceType[]) => {
     if (!dice.length) return
     playAudio(dice.length === 1 ? 'diceSingle' : 'diceMulti')
-    const roll = rollDiceSet(dice)
-    setDiceOverlay({ dice: roll.visuals, tallies: roll.tallies })
+    const visuals: DiceVisual[] = dice.map((type, index) => ({
+      id: `${player}-${Date.now()}-${index}`,
+      type,
+    }))
+    const emptyTallies: MovementBudget = { swordsman: 0, mage: 0, tactician: 0 }
+    setDiceOverlay({ dice: visuals, tallies: emptyTallies })
     setMovementState({
       player,
       action,
       diceUsed: dice,
-      budget: { ...roll.tallies },
+      budget: { ...emptyTallies },
       destinations: [],
       locked: true,
     })
   }
+
+  const handleDiceResolve = useCallback((updatedDice: DiceVisual[], tallies: MovementBudget) => {
+    setDiceOverlay((prev) => (prev ? { ...prev, dice: updatedDice, tallies } : prev))
+    setMovementState((prev) =>
+      prev ? { ...prev, budget: { ...tallies } } : prev,
+    )
+  }, [])
 
   const gatherDiceTypes = (action: 'standard' | 'strategy' | 'comeback'): DiceType[] | null => {
     const [r1, r2, r3] = diceSlots
@@ -1355,8 +1355,11 @@ function App() {
                 setDiceOverlay((prev) => (prev ? { ...prev, debugSettings } : prev))
               } else {
                 const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
-                const roll = rollDiceSet(diceTypes)
-                setDiceOverlay({ dice: roll.visuals, tallies: roll.tallies, debugSettings })
+                const visuals: DiceVisual[] = diceTypes.map((type, index) => ({
+                  id: `debug-relaunch-${Date.now()}-${index}`,
+                  type,
+                }))
+                setDiceOverlay({ dice: visuals, tallies: { swordsman: 0, mage: 0, tactician: 0 }, debugSettings })
               }
             }}
           >
@@ -1372,6 +1375,7 @@ function App() {
           visible
           onClose={confirmDiceResult}
           settings={diceOverlay.debugSettings ?? debugSettings}
+          onResolve={handleDiceResolve}
         />
       ) : null}
 

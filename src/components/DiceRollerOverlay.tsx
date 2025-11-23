@@ -1,7 +1,7 @@
-import { Canvas, useLoader } from '@react-three/fiber'
+import { Canvas, useFrame, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Physics, useBox, usePlane, useContactMaterial } from '@react-three/cannon'
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { TextureLoader } from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
@@ -10,8 +10,8 @@ import type { ClassType, DebugDiceSettings, DiceType, MovementBudget } from '../
 export interface DiceVisual {
   id: string
   type: DiceType
-  faceIndex: number
-  result: ClassType
+  faceIndex?: number
+  result?: ClassType
 }
 
 interface DiceRollerOverlayProps {
@@ -20,6 +20,7 @@ interface DiceRollerOverlayProps {
   visible: boolean
   onClose: () => void
   settings?: DebugDiceSettings
+  onResolve: (dice: DiceVisual[], tallies: MovementBudget) => void
 }
 
 const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
@@ -29,18 +30,18 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
 
 const DiceMesh = ({
   type,
-  faceIndex,
   settled,
   settings,
   icons,
   material,
+  onResult,
 }: {
   type: DiceType
-  faceIndex: number
   settled: boolean
   settings: DebugDiceSettings
   icons: Record<ClassType, THREE.Texture>
   material: string
+  onResult: (faceIndex: number, result: ClassType) => void
 }) => {
   const dieSize = settings.dieSize
   const spawnHeight = Math.max(settings.spawnHeight, 3)
@@ -60,6 +61,22 @@ const DiceMesh = ({
     material,
   }))
 
+  const velocity = useRef<[number, number, number]>([0, 0, 0])
+  const angularVelocity = useRef<[number, number, number]>([0, 0, 0])
+  const resolvedRef = useRef(false)
+  const stillFrames = useRef(0)
+
+  useEffect(() => {
+    const unsubscribe = api.velocity.subscribe((v) => (velocity.current = v as [number, number, number]))
+    return unsubscribe
+  }, [api.velocity])
+  useEffect(() => {
+    const unsubscribe = api.angularVelocity.subscribe(
+      (v) => (angularVelocity.current = v as [number, number, number]),
+    )
+    return unsubscribe
+  }, [api.angularVelocity])
+
   useEffect(() => {
     if (!settled) {
       const { x, y, z, torque, minHorizontal } = settings.impulse
@@ -76,7 +93,39 @@ const DiceMesh = ({
     if (Math.abs(x) > limit || Math.abs(z) > limit) {
       api.position.set(clamp(x, -limit, limit), spawnHeight, clamp(z, -limit, limit))
     }
-  }, [api, faceIndex, settled, settings])
+  }, [api, settled, settings])
+
+  useFrame(() => {
+    if (resolvedRef.current) return
+    const linear = velocity.current
+    const angular = angularVelocity.current
+    const linearSpeed = Math.hypot(linear[0], linear[1], linear[2])
+    const angularSpeed = Math.hypot(angular[0], angular[1], angular[2])
+    if (linearSpeed < 0.2 && angularSpeed < 0.2) {
+      stillFrames.current += 1
+      if (stillFrames.current > 20 && ref.current) {
+        resolvedRef.current = true
+        const quaternion = ref.current.getWorldQuaternion(new THREE.Quaternion())
+        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+        const axisContributions = [
+          { index: 0, value: up.x },
+          { index: 1, value: -up.x },
+          { index: 2, value: up.y },
+          { index: 3, value: -up.y },
+          { index: 4, value: up.z },
+          { index: 5, value: -up.z },
+        ]
+        const topFace = axisContributions.reduce((prev, current) =>
+          current.value > prev.value ? current : prev,
+        )
+        const faceDefinitions = type === 'silver' ? SILVER_FACES : GOLD_FACES
+        const result = faceDefinitions[topFace.index]
+        onResult(topFace.index, result)
+      }
+    } else {
+      stillFrames.current = 0
+    }
+  })
 
   const color = diceFaceColors[type]
   return (
@@ -160,7 +209,7 @@ const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; fricti
   return null
 }
 
-export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }: DiceRollerOverlayProps) => {
+export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, onResolve }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
   const floorMaterial = useMemo(() => ({ name: 'floor', friction: 0.32, restitution: 0.45 }), [])
   const wallMaterial = useMemo(() => ({ name: 'wall', friction: 0.06, restitution: 0.3 }), [])
@@ -175,6 +224,35 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
     mage: textures[1],
     tactician: textures[2],
   } satisfies Record<ClassType, THREE.Texture>
+  const [resolvedFaces, setResolvedFaces] = useState<Record<string, { faceIndex: number; result: ClassType }>>({})
+
+  useEffect(() => {
+    setResolvedFaces({})
+  }, [dice])
+
+  const handleResult = useCallback((id: string, faceIndex: number, result: ClassType) => {
+    setResolvedFaces((prev) => (prev[id] ? prev : { ...prev, [id]: { faceIndex, result } }))
+  }, [])
+
+  useEffect(() => {
+    if (!dice.length) return
+    const allResolved = dice.every((die) => resolvedFaces[die.id])
+    if (!allResolved) return
+    const updatedDice = dice.map((die) => {
+      const resolved = resolvedFaces[die.id]
+      return resolved ? { ...die, faceIndex: resolved.faceIndex, result: resolved.result } : die
+    })
+    const computedTallies = updatedDice.reduce(
+      (acc, die) => {
+        if (die.result) {
+          acc[die.result] += 1
+        }
+        return acc
+      },
+      { swordsman: 0, mage: 0, tactician: 0 } satisfies MovementBudget,
+    )
+    onResolve(updatedDice, computedTallies)
+  }, [resolvedFaces, dice, onResolve])
 
   useEffect(() => {
     if (!visible) return
@@ -200,7 +278,6 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
             <DiceMesh
               key={item.id}
               type={item.type}
-              faceIndex={item.faceIndex}
               settled={settled}
               settings={
                 settings ?? {
@@ -211,6 +288,7 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings }:
               }
               icons={iconTextures}
               material="dice-material"
+              onResult={(faceIndex, result) => (item.id, faceIndex, result)}
             />
           ))}
         </Physics>
