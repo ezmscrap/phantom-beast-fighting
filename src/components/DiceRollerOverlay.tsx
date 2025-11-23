@@ -28,6 +28,10 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
   gold: GOLD_FACES,
 }
 
+/**
+ * 各ダイスの3Dモデルと物理挙動を管理するコンポーネント。
+ * 位置/速度を監視し、一定時間静止したら出目を通知する。
+ */
 const DiceMesh = ({
   type,
   settled,
@@ -36,17 +40,31 @@ const DiceMesh = ({
   material,
   onResult,
 }: {
+  /** 銀/金などダイスの種類。出目テクスチャと効果音の判定に使う。 */
   type: DiceType
+  /** 親コンポーネントから渡される「ダイスが完全に停止したかどうか」のフラグ。 */
   settled: boolean
+  /** サイコロサイズや初期インパルスなどのデバッグ用設定。 */
   settings: DebugDiceSettings
+  /** 各面に貼り付けるクラスアイコンのテクスチャ辞書。 */
   icons: Record<ClassType, THREE.Texture>
+  /** cannon.js で使用する物理マテリアルの識別子。 */
   material: string
+  /** 静止判定後に上面のインデックスとクラス種別を通知するコールバック。 */
   onResult: (faceIndex: number, result: ClassType) => void
 }) => {
+  /** ダイスモデルの一辺。設定から取得し、形状/座標計算に使用。 */
   const dieSize = settings.dieSize
+  /** ダイスを落とす初期高さ。最低3以上に補正し、落下演出の安定性を確保。 */
   const spawnHeight = Math.max(settings.spawnHeight, 3)
+  /** ダイスを横方向から投げ込む開始位置（X座標）。 */
   const startX = 3
+  /** ダイスの開始位置（Z座標）。 */
   const startZ = 0
+  /**
+   * useBoxでcannonボディを生成。サイズ/質量/減衰などを設定し、
+   * 乱数を使って初期姿勢をバラつかせる。
+   */
   const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
     mass: 0.55,
@@ -61,15 +79,21 @@ const DiceMesh = ({
     material,
   }))
 
+  /** 最新の平行移動速度を保持する参照。静止判定に使用。 */
   const velocity = useRef<[number, number, number]>([0, 0, 0])
+  /** 最新の角速度を保持する参照。静止判定に使用。 */
   const angularVelocity = useRef<[number, number, number]>([0, 0, 0])
+  /** 出目をすでに通知済みかどうかのフラグ。二重通知を防ぐ。 */
   const resolvedRef = useRef(false)
+  /** 連続で静止判定を満たしたフレーム数を記録するカウンタ。 */
   const stillFrames = useRef(0)
 
+  /** cannon API から速度ベクトルを購読し、参照へ格納。 */
   useEffect(() => {
     const unsubscribe = api.velocity.subscribe((v) => (velocity.current = v as [number, number, number]))
     return unsubscribe
   }, [api.velocity])
+  /** cannon API から角速度を購読し、参照へ格納。 */
   useEffect(() => {
     const unsubscribe = api.angularVelocity.subscribe(
       (v) => (angularVelocity.current = v as [number, number, number]),
@@ -77,6 +101,10 @@ const DiceMesh = ({
     return unsubscribe
   }, [api.angularVelocity])
 
+  /**
+   * settled=false（投擲直後）の場合はインパルスやトルクを与えて投げ込む。
+   * settled=true（集計済）では壁外に飛び出した場合にのみ位置をリセットする。
+   */
   useEffect(() => {
     if (!settled) {
       const { x, y, z, torque, minHorizontal } = settings.impulse
@@ -95,6 +123,10 @@ const DiceMesh = ({
     }
   }, [api, settled, settings])
 
+  /**
+   * 毎フレーム速度を監視し、一定フレーム静止したら上面の向きを判定して出目を通知する。
+   * 静止判定に linearSpeed/ angularSpeed を使用。
+   */
   useFrame(() => {
     if (resolvedRef.current) return
     const linear = velocity.current
@@ -127,6 +159,7 @@ const DiceMesh = ({
     }
   })
 
+  /** ダイス本体の面カラー。種類ごとに色を変える。 */
   const color = diceFaceColors[type]
   return (
     <group ref={ref}>
@@ -164,6 +197,7 @@ const DiceMesh = ({
   )
 }
 
+/** ダイスが落下する床と四方の壁を生成する補助コンポーネント。 */
 const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string } }) => {
   const [floorRef] = usePlane<THREE.Mesh>(() => ({
     rotation: [-Math.PI / 2, 0, 0],
