@@ -1,6 +1,10 @@
-# Phantom Beast Fighting
+# 幻獣闘技
 
-Springin' Sound Stock の効果音と3Dダイス演出を組み合わせた二人用オンライン専用ボードゲームSPAです。6×5の戦場とサイコロ置き場、兵種残数、エネルギートークンが常時可視化され、仕様で定義された16の手順と11の独立手順をアプリ内で進行できます。
+この二人用オンライン専用ボードゲームSPAは、ふわふわ盤友会(@ff_boardgames)さまが作成されたボードゲーム「幻獣闘技」SPA化したものです。
+
+SPA版「幻獣闘技」は、6×5の戦場とサイコロ置き場、兵種残数、エネルギートークンを表示する領域を持ちます。
+作成は いずむ(@ezmscrap)であり、許諾は受けておらず、 「幻獣闘技」に感銘を受けたため、SPA開発の練習も兼ねて実装しています。
+
 
 ## セットアップ
 
@@ -29,7 +33,13 @@ npm run dev
 4. 通常/作戦/起死回生アクションでは使用するダイス数に応じた演出が走り、得られた兵種別移動可能数が0になるまで移動します（敵を除外した時点で終了）。
 5. ユニット除外時や策士移動時にエネルギーが加算され、勝利条件を満たすと全画面オーバーレイで勝者を表示。再戦ボタンで初期化できます。
 
-## 効果音クレジット
+## 謝辞
+
+### 原作「幻獣闘技」
+
+[ふわふわ盤友会](https://www.x.com/ff_boardgames)が開発したボードゲーム
+
+### 効果音クレジット
 
 すべて [Springin’ Sound Stock](https://www.springin.org/sound-stock/) の音源を規約に従って使用しています。
 
@@ -47,6 +57,12 @@ npm run dev
 | 単独ダイスロール | 大きいシングルダイス2（生活#サイコロ） | `public/audio/dice_single.mp3` |
 | 複数ダイスロール | 大きいダブルダイス2（生活#サイコロ） | `public/audio/dice_multi.mp3` |
 | キャンセル | キャンセル（ボタン・システム） | `public/audio/cancel.mp3` |
-| サイコロアイコン | Material Symbols Outlined (Swords / Auto Fix High / Chess) | `public/icons/*.svg` |
 
 ライセンス・利用方法の詳細は [Springin’ Sound Stock のガイドライン](https://www.springin.org/sound-stock/guideline/) を参照してください。
+
+### アイコンクレジット
+
+| 用途 | アイコン名 (カテゴリ) | ファイル |
+| --- | --- | --- |
+| サイコロアイコン | Material Symbols Outlined (Swords / Auto Fix High / Chess) | `public/icons/*.svg` |
+
