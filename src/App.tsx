@@ -243,15 +243,10 @@ function App() {
     setLeadingPlayer('A')
     setStep(8)
     const presetDice = resolvePresetDice(appConfig.diceDebug.preset)
-    const visuals: DiceVisual[] = presetDice.map((type, index) => ({
-      id: `debug-${type}-${index}`,
-      type,
-      faceIndex: 0,
-      result: 'swordsman',
-    }))
+    const roll = rollDiceSet(presetDice)
     setDiceOverlay({
-      dice: visuals,
-      tallies: { swordsman: 0, mage: 0, tactician: 0 },
+      dice: roll.visuals,
+      tallies: roll.tallies,
       debugSettings: {
         dieSize: appConfig.diceDebug.dieSize,
         spawnHeight: appConfig.diceDebug.spawnHeight,
@@ -1360,13 +1355,8 @@ function App() {
                 setDiceOverlay((prev) => (prev ? { ...prev, debugSettings } : prev))
               } else {
                 const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
-                const visuals = diceTypes.map((type, index) => ({
-                  id: `debug-relaunch-${type}-${index}`,
-                  type,
-                  faceIndex: 0,
-                  result: 'swordsman' as ClassType,
-                }))
-                setDiceOverlay({ dice: visuals, tallies: { swordsman: 0, mage: 0, tactician: 0 }, debugSettings })
+                const roll = rollDiceSet(diceTypes)
+                setDiceOverlay({ dice: roll.visuals, tallies: roll.tallies, debugSettings })
               }
             }}
           >
