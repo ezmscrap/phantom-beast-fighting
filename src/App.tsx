@@ -213,6 +213,16 @@ function App() {
     }
   }, [step, nextActions, activeStepPlayer, movementState, diceOverlay, goToNextStep])
 
+  useEffect(() => {
+    if (step !== 7 && step !== 12) return
+    const player = activeStepPlayer
+    if (players[player].energy > 0) return
+    if (nextActions[player] !== 'standard') {
+      setNextActions((prev) => ({ ...prev, [player]: 'standard' }))
+    }
+    goToNextStep()
+  }, [step, activeStepPlayer, players, nextActions, setNextActions, goToNextStep])
+
   const renderProcedureControls = () => {
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
