@@ -19,7 +19,6 @@ interface UnitPlacementModalProps {
   onClose: () => void
   creationRemaining: Record<2 | 3 | 4 | 5, number>
   onRequestCreation: (player: PlayerId, step: ProcedureStep) => void
-  onCompleteStep: () => void
 }
 
 export const UnitPlacementModal = ({
@@ -32,7 +31,6 @@ export const UnitPlacementModal = ({
   onClose,
   creationRemaining,
   onRequestCreation,
-  onCompleteStep,
 }: UnitPlacementModalProps) => (
   <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={onClose}>
     {placementState ? (
