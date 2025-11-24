@@ -147,7 +147,6 @@ function App() {
       if (!state) return state
       const noBudget = state.budget.swordsman === 0 && state.budget.mage === 0 && state.budget.tactician === 0
       if (noBudget) {
-        setNextActions((prev) => ({ ...prev, [state.player]: null }))
         return null
       }
       return { ...state, locked: false }
