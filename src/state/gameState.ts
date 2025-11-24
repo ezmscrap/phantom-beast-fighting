@@ -58,11 +58,14 @@ export const useGameState = () => {
   const [players, setPlayers] = useState(() => createInitialPlayers())
   const [units, setUnits] = useState<Unit[]>([])
   const [unitCounter, setUnitCounter] = useState(0)
+  /** 現在の手順（1〜16）。ゲーム進行やボタン表示の基準になる。 */
   const [step, setStep] = useState<ProcedureStep>(1)
   const [leadingPlayer, setLeadingPlayer] = useState<PlayerId>('A')
   const [placementState, setPlacementState] = useState<PlacementState | null>(null)
   const [movementState, setMovementState] = useState<MovementState | null>(null)
+  /** 次アクション選択モーダルで一時的に保持するラジオ選択内容。 */
   const [actionSelection, setActionSelection] = useState<ActionSelectionState | null>(null)
+  /** エネルギー消費決定後に確定した各プレイヤーの次アクション。 */
   const [nextActions, setNextActions] = useState<NextActions>({ A: null, B: null })
   const [creationRequest, setCreationRequest] = useState<{ player: PlayerId; step: ProcedureStep } | null>(null)
   const [creationSelection, setCreationSelection] = useState<{ base?: BaseType; role?: ClassType }>({})
@@ -357,11 +360,19 @@ export const useGameState = () => {
     playAudio('cancel')
   }
 
+  /**
+   * 次アクション選択モーダルでラジオを選んだ時に呼ばれる。
+   * 一時的に actionSelection に保持し、モーダル確定時に nextActions へ反映する。
+   */
   const handleActionSelection = (player: PlayerId, value: ActionType) => {
     setActionSelection({ player, value })
     playAudio('radio')
   }
 
+  /**
+   * 次アクション選択モーダルの「決定」ボタン。
+   * 選択内容があれば energy を消費し、nextActionsへ確定値をセットする。
+   */
   const confirmAction = () => {
     if (!actionSelection) return
     const { player, value } = actionSelection

@@ -191,6 +191,13 @@ function App() {
     )
   }
 
+  /**
+   * nextActionsのデバッグログ。手順進行時に現在の選択状況を把握しやすくするため。
+   */
+  useEffect(() => {
+    console.debug('nextActions update', nextActions)
+  }, [nextActions])
+
   useEffect(() => {
     if (step < 2 || step > 5) return
     const remaining = creationRemaining[step as 2 | 3 | 4 | 5]
@@ -199,6 +206,9 @@ function App() {
     }
   }, [step, creationRemaining, pendingPlacementCount, goToNextStep])
 
+  /**
+   * 作戦手順(8,9,10,13,14,15)の開始時に、選択されたアクションと一致しなければスキップする。
+   */
   useEffect(() => {
     const actionMap: Partial<Record<ProcedureStep, ActionType>> = {
       8: 'standard',
@@ -217,6 +227,10 @@ function App() {
     }
   }, [step, nextActions, activeStepPlayer, movementState, diceOverlay, goToNextStep])
 
+  /**
+   * エネルギー決定手順(7,12)でエネルギー0の場合、自動的に通常アクションへ設定して進行する。
+   * 次アクションがすでにstandardなら上書きしない。
+   */
   useEffect(() => {
     if (step !== 7 && step !== 12) return
     const player = activeStepPlayer

@@ -9,12 +9,17 @@ interface ActionSelectionModalProps {
   onCancel: () => void
 }
 
+/** ラジオボタンに表示するアクション種別の説明文。 */
 const optionLabels: Record<ActionType, string> = {
   standard: '通常アクション（エネルギー消費0）',
   strategy: '作戦アクション（エネルギー1）',
   comeback: '起死回生アクション（エネルギー3）',
 }
 
+/**
+ * 次アクション選択モーダル。
+ * selection が存在する場合のみ開き、確定時に onConfirm を呼び出す。
+ */
 export const ActionSelectionModal = ({ selection, players, onSelect, onConfirm, onCancel }: ActionSelectionModalProps) => (
   <Modal
     title="次アクション選択"
