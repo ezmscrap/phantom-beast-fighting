@@ -48,9 +48,13 @@ export const computeLegalMoves = (unit: Unit, board: Map<BoardCell, Unit>, wrap:
     const target = applyWrap(row + dy, column + dx)
     if (!target) return
     const occupant = board.get(target)
-    if (!occupant || occupant.owner !== unit.owner) {
+
+    if (!occupant) {
       results.push(target)
-    } else if (unit.base === 'griffin') {
+      return
+    }
+
+    if (unit.base === 'griffin') {
       const dirY = Math.sign(dy)
       const dirX = Math.sign(dx)
       const jumpCell = applyWrap(row + dy + dirY, column + dx + dirX)
@@ -59,6 +63,11 @@ export const computeLegalMoves = (unit: Unit, board: Map<BoardCell, Unit>, wrap:
       if (!jumpOccupant || jumpOccupant.owner !== unit.owner) {
         results.push(jumpCell)
       }
+      return
+    }
+
+    if (occupant.owner !== unit.owner) {
+      results.push(target)
     }
   })
 
