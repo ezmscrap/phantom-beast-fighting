@@ -384,11 +384,12 @@ export const useGameState = () => {
     if (cost > 0) {
       decreaseEnergy(player, cost)
     }
-    setNextActions((prev) => {
-      const nextState = { ...prev, [player]: value }
-      console.debug('confirmAction nextActions update', nextState)
-      return nextState
-    })
+    const updated = {
+      A: player === 'A' ? value : nextActions.A,
+      B: player === 'B' ? value : nextActions.B,
+    }
+    console.debug('confirmAction nextActions update', updated)
+    setNextActions(updated)
     setActionSelection(null)
     playAudio('button')
   }

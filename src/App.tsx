@@ -190,12 +190,10 @@ function App() {
     )
   }
 
-  /**
-   * nextActionsのデバッグログ。手順進行時に現在の選択状況を把握しやすくするため。
-   */
-  useEffect(() => {
-    console.debug('nextActions update', nextActions)
-  }, [nextActions])
+  const debugNextActions = useMemo(
+    () => `nextActions: A=${nextActions.A ?? 'null'}, B=${nextActions.B ?? 'null'}`,
+    [nextActions],
+  )
 
   useEffect(() => {
     if (step < 2 || step > 5) return
@@ -227,14 +225,14 @@ function App() {
   }, [step, nextActions, activeStepPlayer, movementState, diceOverlay, goToNextStep])
 
   /**
-   * エネルギー決定手順(7,12)でエネルギー0の場合、自動的に通常アクションへ設定して進行する。
-   * 次アクションがすでにstandardなら上書きしない。
+   * エネルギー決定手順(7,12)でエネルギー0の場合、自動で通常アクションにセットして進行する。
+   * nextActionsに値が入っている場合は尊重し、nullならstandardをセットして先へ進む。
    */
   useEffect(() => {
     if (step !== 7 && step !== 12) return
     const player = activeStepPlayer
     if (players[player].energy > 0) return
-    if (nextActions[player] !== 'standard') {
+    if (nextActions[player] === null) {
       setNextActions((prev) => ({ ...prev, [player]: 'standard' }))
     }
     goToNextStep()
@@ -572,6 +570,8 @@ function App() {
           ) : null}
         </aside>
       </main>
+
+      <div className="debug-next-actions">{debugNextActions}</div>
 
       <PlayerSetupModal
         isOpen={step === 1 && !victor}
