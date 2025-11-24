@@ -24,14 +24,14 @@ export const appConfig: AppConfig = {
   diceDebug: {
     enabled: false,
     preset: 'silver1',
-    dieSize: 0.75,
-    spawnHeight: 15,
+    dieSize: 0.5,
+    spawnHeight: 16,
     impulse: {
-      x: 90000,
-      y: 900,
+      x: 9,
+      y: 9,
       z: 9,
-      torque: 160,
-      minHorizontal: 2400,
+      torque: 16,
+      minHorizontal: 240,
     },
   },
 }

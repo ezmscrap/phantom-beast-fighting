@@ -341,7 +341,7 @@ header h1 {
   width: 100vw;
   height: 100vh;
   pointer-events: auto;
-  background: rgba(0, 0, 0, 0.6);
+  position: relative;
 }
 
 .dice-stage canvas {
@@ -352,7 +352,7 @@ header h1 {
 .dice-overlay__summary {
   padding: 1rem;
   text-align: center;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.5);
   color: #f5f7ff;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   pointer-events: auto;

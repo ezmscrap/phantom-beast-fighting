@@ -34,20 +34,21 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
  */
 const DEFAULT_ROLL_SETTINGS = {
   dieSize: 0.5,
-  spawnHeight: 6,
+  spawnHeight: 16,
   impulse: {
-    x: 6,
-    y: 5,
-    z: 6,
-    torque: 8,
+    x: 9,
+    y: 9,
+    z: 9,
+    torque: 16,
+    minHorizontal: 240,
   },
   launchOrigin: {
     x: 4,
     z: -4,
   },
   launchVector: {
-    x: -6,
-    z: 6,
+    x: -600,
+    z: 600,
   },
 } as const
 
@@ -91,7 +92,7 @@ const DiceMesh = ({
     angularDamping: 0.05,
     position: [
       startX,
-      Math.random() * 0.5 + spawnHeight,
+      1 + spawnHeight,
       startZ,
     ],
     rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
@@ -130,7 +131,9 @@ const DiceMesh = ({
       const impulseZ = DEFAULT_ROLL_SETTINGS.launchVector.z
       api.applyImpulse([impulseX, y + 2.5, impulseZ], [0, 0, 0])
       api.velocity.set(impulseX * 0.4, y * 0.2, impulseZ * 0.4)
-      api.applyTorque([impulseX * 0.5, DEFAULT_ROLL_SETTINGS.impulse.torque * 0.2, impulseZ * 0.5])
+      const torqueScale = DEFAULT_ROLL_SETTINGS.impulse.torque
+      const randomFactor = 0.5 + Math.random()
+      api.applyTorque([impulseX * 0.4 * randomFactor, torqueScale * 0.2 * randomFactor, impulseZ * 0.4 * randomFactor])
     }
   }, [api, settled])
 
@@ -223,25 +226,30 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
 
   const createWall = (position: [number, number, number], rotation: [number, number, number]) => {
     const [wallRef] = useBox<THREE.Mesh>(() => ({
-      args: [16, 5, 0.5],
+      args: [20, 24, 0.5],
       position,
       rotation,
       type: 'Static',
       material: materials.wall,
     }))
-    return <mesh key={`${position.join('-')}`} ref={wallRef} />
+    return (
+      <mesh key={`${position.join('-')}`} ref={wallRef} receiveShadow castShadow>
+        <boxGeometry args={[20, 12, 0.5]} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
+      </mesh>
+    )
   }
 
   return (
     <>
       <mesh ref={floorRef} receiveShadow>
-        <planeGeometry args={[16, 16]} />
+        <planeGeometry args={[20, 20]} />
         <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
       </mesh>
-      {createWall([0, 2.5, -4.8], [0, 0, 0])}
-      {createWall([0, 2.5, 4.8], [0, 0, 0])}
-      {createWall([-4.8, 2.5, 0], [0, Math.PI / 2, 0])}
-      {createWall([4.8, 2.5, 0], [0, Math.PI / 2, 0])}
+      {createWall([0, 6, -5.5], [0, 0, 0])}
+      {createWall([0, 6, 5.5], [0, 0, 0])}
+      {createWall([-5.5, 6, 0], [0, Math.PI / 2, 0])}
+      {createWall([5.5, 6, 0], [0, Math.PI / 2, 0])}
     </>
   )
 }
@@ -258,6 +266,11 @@ const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; fricti
   return null
 }
 
+const CAMERA_SETTINGS = {
+  position: [0, 22, 10] as [number, number, number],
+  fov: 30,
+}
+
 export const DiceRollerOverlay = ({
   dice,
   visible,
@@ -267,6 +280,7 @@ export const DiceRollerOverlay = ({
   onResolve,
 }: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
+  const sessionStartRef = useRef<number>(0)
   const floorMaterial = useMemo(() => ({ name: 'floor', friction: 0.32, restitution: 0.45 }), [])
   const wallMaterial = useMemo(() => ({ name: 'wall', friction: 0.06, restitution: 0.3 }), [])
   const diceMaterial = useMemo(() => ({ name: 'dice', friction: 0.2, restitution: 0.6 }), [])
@@ -290,6 +304,7 @@ export const DiceRollerOverlay = ({
     setSettled(false)
     setResultsDispatched(false)
     shouldResetShooters.current = true
+    sessionStartRef.current = Date.now()
   }, [rollSessionId])
 
   const handleResult = useCallback((id: string, faceIndex: number, result: ClassType) => {
@@ -328,9 +343,11 @@ export const DiceRollerOverlay = ({
 
   useEffect(() => {
     if (!settled) return
+    const elapsed = Date.now() - sessionStartRef.current
+    const remaining = Math.max(0, 10000 - elapsed)
     const timer = setTimeout(() => {
       onClose()
-    }, 5000)
+    }, remaining)
     return () => clearTimeout(timer)
   }, [settled, onClose])
 
@@ -341,7 +358,7 @@ export const DiceRollerOverlay = ({
   return (
     <div className="dice-overlay">
       <div className="dice-stage">
-        <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: [-6, 7, 6], fov: 40 }}>
+        <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: CAMERA_SETTINGS.position, fov: CAMERA_SETTINGS.fov }}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
           <Physics gravity={[0, -9.81, 0]}>
