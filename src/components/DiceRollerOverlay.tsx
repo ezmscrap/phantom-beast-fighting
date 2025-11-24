@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import * as THREE from 'three'
 import { TextureLoader } from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
-import type { ClassType, DebugDiceSettings, DiceType, MovementBudget } from '../types'
+import type { ClassType, DiceType, MovementBudget } from '../types'
 
 export interface DiceVisual {
   id: string
@@ -19,7 +19,7 @@ interface DiceRollerOverlayProps {
   tallies: MovementBudget
   visible: boolean
   onClose: () => void
-  settings?: DebugDiceSettings
+  rollSessionId: string
   onResolve: (dice: DiceVisual[], tallies: MovementBudget) => void
 }
 
@@ -32,35 +32,54 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
  * 各ダイスの3Dモデルと物理挙動を管理するコンポーネント。
  * 位置/速度を監視し、一定時間静止したら出目を通知する。
  */
+const DEFAULT_ROLL_SETTINGS = {
+  dieSize: 0.5,
+  spawnHeight: 6,
+  impulse: {
+    x: 6,
+    y: 5,
+    z: 6,
+    torque: 8,
+  },
+  launchOrigin: {
+    x: 4,
+    z: -4,
+  },
+  launchVector: {
+    x: -6,
+    z: 6,
+  },
+} as const
+
 const DiceMesh = ({
   type,
   settled,
-  settings,
   icons,
   material,
   onResult,
+  registerShooter,
 }: {
   /** 銀/金などダイスの種類。出目テクスチャと効果音の判定に使う。 */
   type: DiceType
   /** 親コンポーネントから渡される「ダイスが完全に停止したかどうか」のフラグ。 */
   settled: boolean
-  /** サイコロサイズや初期インパルスなどのデバッグ用設定。 */
-  settings: DebugDiceSettings
   /** 各面に貼り付けるクラスアイコンのテクスチャ辞書。 */
   icons: Record<ClassType, THREE.Texture>
   /** cannon.js で使用する物理マテリアルの識別子。 */
   material: string
   /** 静止判定後に上面のインデックスとクラス種別を通知するコールバック。 */
   onResult: (faceIndex: number, result: ClassType) => void
+  /** 親から投げ込み指示を受け取るための登録関数。 */
+  registerShooter: (shoot: () => void) => void
 }) => {
   /** ダイスモデルの一辺。設定から取得し、形状/座標計算に使用。 */
-  const dieSize = settings.dieSize
+  const dieSize = DEFAULT_ROLL_SETTINGS.dieSize
   /** ダイスを落とす初期高さ。最低3以上に補正し、落下演出の安定性を確保。 */
-  const spawnHeight = Math.max(settings.spawnHeight, 3)
-  /** ダイスを横方向から投げ込む開始位置（X座標）。 */
-  const startX = 3
-  /** ダイスの開始位置（Z座標）。 */
-  const startZ = 0
+  const spawnHeight = Math.max(DEFAULT_ROLL_SETTINGS.spawnHeight, 3)
+  /** ダイスを投げ込む開始位置（画面右上を想定した固定座標）。 */
+  const startX = DEFAULT_ROLL_SETTINGS.launchOrigin.x
+  /** ダイスの開始位置（右上から中央へ向けるための固定Z）。 */
+  const startZ = DEFAULT_ROLL_SETTINGS.launchOrigin.z
   /**
    * useBoxでcannonボディを生成。サイズ/質量/減衰などを設定し、
    * 乱数を使って初期姿勢をバラつかせる。
@@ -102,26 +121,22 @@ const DiceMesh = ({
   }, [api.angularVelocity])
 
   /**
-   * settled=false（投擲直後）の場合はインパルスやトルクを与えて投げ込む。
-   * settled=true（集計済）では壁外に飛び出した場合にのみ位置をリセットする。
+   * 親から受け取るshootコールバック。呼び出し時にインパルスを与える。
    */
-  useEffect(() => {
+  const shoot = useCallback(() => {
     if (!settled) {
-      const { x, y, z, torque, minHorizontal } = settings.impulse
-      const towardCenterX = -(minHorizontal + x * 1.2)
-      const lateralZ = (Math.random() - 0.5) * z * 0.4
-      api.applyImpulse([towardCenterX, y + 2.5, lateralZ], [0, 0, 0])
-      api.velocity.set(towardCenterX * 0.3, y * 0.18, lateralZ * 0.3)
-      api.applyTorque([towardCenterX * 0.4, torque * 0.15, lateralZ * 0.4])
-      return
+      const { y } = DEFAULT_ROLL_SETTINGS.impulse
+      const impulseX = DEFAULT_ROLL_SETTINGS.launchVector.x
+      const impulseZ = DEFAULT_ROLL_SETTINGS.launchVector.z
+      api.applyImpulse([impulseX, y + 2.5, impulseZ], [0, 0, 0])
+      api.velocity.set(impulseX * 0.4, y * 0.2, impulseZ * 0.4)
+      api.applyTorque([impulseX * 0.5, DEFAULT_ROLL_SETTINGS.impulse.torque * 0.2, impulseZ * 0.5])
     }
-    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
-    const [x = 0, , z = 0] = ref.current?.position.toArray() ?? []
-    const limit = 3.5
-    if (Math.abs(x) > limit || Math.abs(z) > limit) {
-      api.position.set(clamp(x, -limit, limit), spawnHeight, clamp(z, -limit, limit))
-    }
-  }, [api, settled, settings])
+  }, [api, settled])
+
+  useEffect(() => {
+    registerShooter(shoot)
+  }, [registerShooter, shoot])
 
   /**
    * 毎フレーム速度を監視し、一定フレーム静止したら上面の向きを判定して出目を通知する。
@@ -208,7 +223,7 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
 
   const createWall = (position: [number, number, number], rotation: [number, number, number]) => {
     const [wallRef] = useBox<THREE.Mesh>(() => ({
-      args: [12, 4, 0.5],
+      args: [16, 5, 0.5],
       position,
       rotation,
       type: 'Static',
@@ -220,13 +235,13 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
   return (
     <>
       <mesh ref={floorRef} receiveShadow>
-        <planeGeometry args={[12, 12]} />
+        <planeGeometry args={[16, 16]} />
         <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
       </mesh>
-      {createWall([0, 2, -3.8], [0, 0, 0])}
-      {createWall([0, 2, 3.8], [0, 0, 0])}
-      {createWall([-3.8, 2, 0], [0, Math.PI / 2, 0])}
-      {createWall([3.8, 2, 0], [0, Math.PI / 2, 0])}
+      {createWall([0, 2.5, -4.8], [0, 0, 0])}
+      {createWall([0, 2.5, 4.8], [0, 0, 0])}
+      {createWall([-4.8, 2.5, 0], [0, Math.PI / 2, 0])}
+      {createWall([4.8, 2.5, 0], [0, Math.PI / 2, 0])}
     </>
   )
 }
@@ -243,7 +258,14 @@ const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; fricti
   return null
 }
 
-export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, onResolve }: DiceRollerOverlayProps) => {
+export const DiceRollerOverlay = ({
+  dice,
+  visible,
+  onClose,
+  tallies,
+  rollSessionId,
+  onResolve,
+}: DiceRollerOverlayProps) => {
   const [settled, setSettled] = useState(false)
   const floorMaterial = useMemo(() => ({ name: 'floor', friction: 0.32, restitution: 0.45 }), [])
   const wallMaterial = useMemo(() => ({ name: 'wall', friction: 0.06, restitution: 0.3 }), [])
@@ -259,17 +281,23 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, o
     tactician: textures[2],
   } satisfies Record<ClassType, THREE.Texture>
   const [resolvedFaces, setResolvedFaces] = useState<Record<string, { faceIndex: number; result: ClassType }>>({})
+  const shootersRef = useRef<Record<string, () => void>>({})
+  const shouldResetShooters = useRef(false)
+  const [resultsDispatched, setResultsDispatched] = useState(false)
 
   useEffect(() => {
     setResolvedFaces({})
-  }, [dice])
+    setSettled(false)
+    setResultsDispatched(false)
+    shouldResetShooters.current = true
+  }, [rollSessionId])
 
   const handleResult = useCallback((id: string, faceIndex: number, result: ClassType) => {
     setResolvedFaces((prev) => (prev[id] ? prev : { ...prev, [id]: { faceIndex, result } }))
   }, [])
 
   useEffect(() => {
-    if (!dice.length) return
+    if (!dice.length || resultsDispatched) return
     const allResolved = dice.every((die) => resolvedFaces[die.id])
     if (!allResolved) return
     const updatedDice = dice.map((die) => {
@@ -285,15 +313,26 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, o
       },
       { swordsman: 0, mage: 0, tactician: 0 } satisfies MovementBudget,
     )
+    setSettled(true)
+    setResultsDispatched(true)
     onResolve(updatedDice, computedTallies)
-  }, [resolvedFaces, dice, onResolve])
+  }, [resolvedFaces, dice, onResolve, resultsDispatched])
 
   useEffect(() => {
-    if (!visible) return
-    setSettled(false)
-    const timer = setTimeout(() => setSettled(true), 2800)
+    const frame = requestAnimationFrame(() => {
+      const callbacks = Object.values(shootersRef.current)
+      callbacks.forEach((shoot) => shoot())
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [rollSessionId])
+
+  useEffect(() => {
+    if (!settled) return
+    const timer = setTimeout(() => {
+      onClose()
+    }, 5000)
     return () => clearTimeout(timer)
-  }, [visible, dice])
+  }, [settled, onClose])
 
   if (!visible) {
     return null
@@ -313,16 +352,16 @@ export const DiceRollerOverlay = ({ dice, visible, onClose, tallies, settings, o
                 key={item.id}
                 type={item.type}
                 settled={settled}
-                settings={
-                  settings ?? {
-                    dieSize: 0.45,
-                    spawnHeight: 4,
-                    impulse: { x: 7, y: 5, z: 7, torque: 7, minHorizontal: 1.2 },
-                  }
-                }
                 icons={iconTextures}
                 material="dice-material"
                 onResult={(faceIndex, result) => handleResult(item.id, faceIndex, result)}
+                registerShooter={(shoot) => {
+                  if (shouldResetShooters.current) {
+                    shootersRef.current = {}
+                    shouldResetShooters.current = false
+                  }
+                  shootersRef.current[item.id] = shoot
+                }}
               />
             ))}
           </Physics>

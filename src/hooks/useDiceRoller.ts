@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { appConfig, resolvePresetDice } from '../config'
+import { appConfig } from '../config'
+import { playAudio } from '../audio'
 import type { DebugDiceSettings, DiceType, MovementBudget } from '../types'
 import type { DiceVisual } from '../components/DiceRollerOverlay'
 
@@ -34,6 +35,7 @@ export const useDiceRoller = () => {
   const launchRoll = useCallback(
     (diceTypes: DiceType[]) => {
       const visuals = createVisuals(diceTypes)
+      playAudio(diceTypes.length === 1 ? 'diceSingle' : 'diceMulti')
       const budget = createEmptyBudget()
       setOverlay({ dice: visuals, tallies: { ...budget } })
       return { budget }
@@ -47,17 +49,6 @@ export const useDiceRoller = () => {
 
   const closeOverlay = useCallback(() => setOverlay(null), [])
 
-  const relaunchWithDebugSettings = useCallback(() => {
-    setOverlay((prev) => {
-      const settings = debugSettingsRef.current
-      if (prev) {
-        return { ...prev, debugSettings: settings }
-      }
-      const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
-      return { dice: createVisuals(diceTypes), tallies: createEmptyBudget(), debugSettings: settings }
-    })
-  }, [])
-
   return {
     overlay,
     debugSettings,
@@ -65,6 +56,5 @@ export const useDiceRoller = () => {
     launchRoll,
     closeOverlay,
     handleResolve,
-    relaunchWithDebugSettings,
   }
 }

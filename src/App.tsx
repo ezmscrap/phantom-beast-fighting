@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   baseDisplayNames,
   classDisplayNames,
@@ -18,7 +18,7 @@ import { PlayerSetupModal } from './components/modals/PlayerSetupModal'
 import { useGameState, createUnitLabel } from './state/gameState'
 import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
-import { appConfig } from './config'
+import { appConfig, resolvePresetDice } from './config'
 import { getActivePlayerForStep, getStepActionInfo, canAdvanceStep, executeAction, startDiceRoll } from './logic/actions'
 
 const DiceRollerOverlay = lazy(async () => {
@@ -99,8 +99,8 @@ function App() {
     launchRoll,
     closeOverlay,
     handleResolve: updateDiceOverlay,
-    relaunchWithDebugSettings,
   } = useDiceRoller()
+  const [rollSessionId, setRollSessionId] = useState(() => Date.now().toString())
 
   const activeStepPlayer = getActivePlayerForStep(step, leadingPlayer)
 
@@ -167,7 +167,11 @@ function App() {
           player,
           action,
           dice,
-          launchRoll,
+          launchRoll: (types) => {
+            const result = launchRoll(types)
+            setRollSessionId(Date.now().toString())
+            return result
+          },
           onMovementStart: (state) => setMovementState(state),
         }),
       setDiceSlots,
@@ -343,6 +347,21 @@ function App() {
     [setCreationRequest],
   )
 
+  const handleDebugRoll = useCallback(() => {
+    const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
+    startDiceRoll({
+      player: leadingPlayer,
+      action: 'standard',
+      dice: diceTypes,
+      launchRoll: (types) => {
+        const result = launchRoll(types)
+        setRollSessionId(Date.now().toString())
+        return result
+      },
+      onMovementStart: (state) => setMovementState(state),
+    })
+  }, [leadingPlayer, launchRoll])
+
   const handleResetGame = () => {
     resetGame()
     resetDiceState()
@@ -389,14 +408,12 @@ function App() {
     setUnits(debugUnits)
     setLeadingPlayer('A')
     setStep(8)
-    relaunchWithDebugSettings()
   }, [
     setDebugSettings,
     setPlayers,
     setUnits,
     setLeadingPlayer,
     setStep,
-    relaunchWithDebugSettings,
   ])
 
   return (
@@ -664,7 +681,7 @@ function App() {
               />
             </label>
           ))}
-          <button onClick={relaunchWithDebugSettings}>現在の設定で再投擲</button>
+          <button onClick={handleDebugRoll}>現在の設定で再投擲</button>
         </section>
       ) : null}
 
@@ -675,8 +692,8 @@ function App() {
             tallies={diceOverlay.tallies}
             visible
             onClose={confirmDiceResult}
-            settings={diceOverlay.debugSettings ?? debugSettings}
             onResolve={handleDiceResolve}
+            rollSessionId={rollSessionId}
           />
         ) : null}
       </Suspense>
