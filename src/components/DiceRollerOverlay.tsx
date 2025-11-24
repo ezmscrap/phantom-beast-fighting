@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { TextureLoader } from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
 import type { ClassType, DiceType, MovementBudget } from '../types'
+import { resolveAssetPath } from '../utils/assetPath'
 
 export interface DiceVisual {
   id: string
@@ -255,9 +256,9 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
 }
 
 const iconPaths: Record<ClassType, string> = {
-  swordsman: '/icons/swords.svg',
-  mage: '/icons/wand.svg',
-  tactician: '/icons/chess.svg',
+  swordsman: resolveAssetPath('icons/swords.svg'),
+  mage: resolveAssetPath('icons/wand.svg'),
+  tactician: resolveAssetPath('icons/chess.svg'),
 }
 
 const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; friction: number; restitution: number }; wall: { name: string; friction: number; restitution: number }; dice: { name: string; friction: number; restitution: number } }) => {

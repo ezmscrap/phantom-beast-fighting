@@ -10,6 +10,7 @@ import type {
   ProcedureStep,
   RowLabel,
 } from './types'
+import { resolveAssetPath } from './utils/assetPath'
 
 export const columns: ColumnLabel[] = ['A', 'B', 'C', 'D', 'E']
 export const rows: RowLabel[] = [1, 2, 3, 4, 5, 6]
@@ -157,19 +158,19 @@ export const griffinOffsets = parsePattern(GRIFFIN_PATTERN)
 export const unicornOffsets = parsePattern(UNICORN_PATTERN)
 
 export const audioMap: Record<AudioCue, string> = {
-  button: '/audio/button_click.mp3',
-  radio: '/audio/radio_select.mp3',
-  unitPlace: '/audio/card_place.mp3',
-  dicePlace: '/audio/card_place.mp3',
-  cancel: '/audio/cancel.mp3',
-  diceSingle: '/audio/dice_single.mp3',
-  diceMulti: '/audio/dice_multi.mp3',
-  dragonMove: '/audio/dragon_move.mp3',
-  griffinMove: '/audio/griffin_move.mp3',
-  unicornMove: '/audio/unicorn_move.mp3',
-  swordAttack: '/audio/sword_attack.mp3',
-  mageAttack: '/audio/mage_attack.mp3',
-  tacticianAttack: '/audio/tactician_attack.mp3',
+  button: resolveAssetPath('audio/button_click.mp3'),
+  radio: resolveAssetPath('audio/radio_select.mp3'),
+  unitPlace: resolveAssetPath('audio/card_place.mp3'),
+  dicePlace: resolveAssetPath('audio/card_place.mp3'),
+  cancel: resolveAssetPath('audio/cancel.mp3'),
+  diceSingle: resolveAssetPath('audio/dice_single.mp3'),
+  diceMulti: resolveAssetPath('audio/dice_multi.mp3'),
+  dragonMove: resolveAssetPath('audio/dragon_move.mp3'),
+  griffinMove: resolveAssetPath('audio/griffin_move.mp3'),
+  unicornMove: resolveAssetPath('audio/unicorn_move.mp3'),
+  swordAttack: resolveAssetPath('audio/sword_attack.mp3'),
+  mageAttack: resolveAssetPath('audio/mage_attack.mp3'),
+  tacticianAttack: resolveAssetPath('audio/tactician_attack.mp3'),
 }
 
 export const baseMoveAudio: Record<BaseType, AudioCue> = {
