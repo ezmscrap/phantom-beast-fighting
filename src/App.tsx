@@ -598,6 +598,7 @@ function App() {
         onClose={() => setPlacementState(null)}
         creationRemaining={creationRemaining}
         onRequestCreation={handleOpenCreationRequest}
+        onCompleteStep={goToNextStep}
       />
 
       <MiniBoardModal

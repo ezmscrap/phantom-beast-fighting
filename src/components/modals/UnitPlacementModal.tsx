@@ -19,6 +19,7 @@ interface UnitPlacementModalProps {
   onClose: () => void
   creationRemaining: Record<2 | 3 | 4 | 5, number>
   onRequestCreation: (player: PlayerId, step: ProcedureStep) => void
+  onCompleteStep: () => void
 }
 
 export const UnitPlacementModal = ({
@@ -31,24 +32,39 @@ export const UnitPlacementModal = ({
   onClose,
   creationRemaining,
   onRequestCreation,
+  onCompleteStep,
 }: UnitPlacementModalProps) => (
   <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={onClose}>
     {placementState ? (
-      <div>
+      <div className="unit-placement-modal">
         <p>{players[placementState.player].name}の配置前ユニットを選択</p>
         {(() => {
           const tag = placementState.stepTag
           const canCreateMore =
             tag && tag >= 2 && tag <= 5 && creationRemaining[tag as 2 | 3 | 4 | 5] > 0
-          if (!canCreateMore) return null
-          return (
-            <button
-              className="ghost"
-              onClick={() => onRequestCreation(placementState.player, tag as ProcedureStep)}
-            >
-              新しくユニットを作成する
-            </button>
-          )
+          if (canCreateMore) {
+            return (
+              <button
+                className="ghost"
+                onClick={() => onRequestCreation(placementState.player, tag as ProcedureStep)}
+              >
+                新しくユニットを作成する
+              </button>
+            )
+          }
+          if (activePlacementUnits.length === 0) {
+            return (
+              <button
+                className="ghost"
+                onClick={() => {
+                  onClose()
+                }}
+              >
+                手順を終了する
+              </button>
+            )
+          }
+          return null
         })()}
         <div className="unit-selection">
           {activePlacementUnits.length === 0 ? (
