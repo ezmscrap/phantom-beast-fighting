@@ -55,6 +55,9 @@ export const computeLegalMoves = (unit: Unit, board: Map<BoardCell, Unit>, wrap:
     }
 
     if (unit.base === 'griffin') {
+      if (occupant.owner !== unit.owner) {
+        results.push(target)
+      }
       const dirY = Math.sign(dy)
       const dirX = Math.sign(dx)
       const jumpCell = applyWrap(row + dy + dirY, column + dx + dirX)
