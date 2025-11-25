@@ -30,6 +30,7 @@ import type {
 } from '../types'
 
 const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
+const CLASS_TYPES: ClassType[] = ['swordsman', 'mage', 'tactician']
 
 const createInitialPlayers = () => ({
   A: {
@@ -135,15 +136,47 @@ export const useGameState = () => {
       })
   }, [placementState, boardMap])
 
+  const isRoleMovementComplete = useCallback(
+    (state: MovementState, role: ClassType, movedIds?: string[]) => {
+      if (state.budget[role] <= 0) return true
+      const used = movedIds ?? state.movedUnitIds
+      return !units.some(
+        (unit) =>
+          unit.owner === state.player &&
+          unit.status === 'deployed' &&
+          unit.role === role &&
+          !used.includes(unit.id),
+      )
+    },
+    [units],
+  )
+
+  const areAllRolesComplete = useCallback(
+    (state: MovementState, movedIds?: string[]) =>
+      CLASS_TYPES.every((role) => isRoleMovementComplete(state, role, movedIds)),
+    [isRoleMovementComplete],
+  )
+
+  useEffect(() => {
+    if (!movementState || movementState.locked) return
+    if (areAllRolesComplete(movementState)) {
+      const completedPlayer = movementState.player
+      setMovementState(null)
+      setNextActions((prev) => ({ ...prev, [completedPlayer]: null }))
+    }
+  }, [movementState, areAllRolesComplete, setMovementState, setNextActions])
+
   const activeMovementUnits = useMemo(() => {
     if (!movementState) return []
     return units.filter(
       (unit) =>
         unit.owner === movementState.player &&
         unit.status === 'deployed' &&
-        movementState.budget[unit.role] > 0,
+        movementState.budget[unit.role] > 0 &&
+        !movementState.movedUnitIds.includes(unit.id) &&
+        !isRoleMovementComplete(movementState, unit.role),
     )
-  }, [units, movementState])
+  }, [units, movementState, isRoleMovementComplete])
 
   const handleCreateUnit = (player: PlayerId, base: BaseType, role: ClassType, stepTag?: ProcedureStep) => {
     const owner = players[player]
@@ -230,7 +263,15 @@ export const useGameState = () => {
   const handleSelectUnitForMovement = (unit: Unit) => {
     if (!movementState) return
     const classBudget = movementState.budget[unit.role]
-    if (classBudget <= 0 || unit.owner !== movementState.player || unit.status !== 'deployed') return
+    if (
+      classBudget <= 0 ||
+      unit.owner !== movementState.player ||
+      unit.status !== 'deployed' ||
+      movementState.movedUnitIds.includes(unit.id) ||
+      isRoleMovementComplete(movementState, unit.role)
+    ) {
+      return
+    }
     const wrap = unit.role === 'mage'
     const moves = computeLegalMoves(unit, boardMap, wrap)
     setMovementState({ ...movementState, selectedUnitId: unit.id, destinations: moves })
@@ -241,6 +282,7 @@ export const useGameState = () => {
     if (!movementState || !movementState.selectedUnitId) return
     const movingUnit = units.find((unit) => unit.id === movementState.selectedUnitId)
     if (!movingUnit) return
+    if (movementState.movedUnitIds.includes(movingUnit.id)) return
     const legal = movementState.destinations.includes(cell)
     if (!legal) return
     const occupant = boardMap.get(cell)
@@ -256,6 +298,10 @@ export const useGameState = () => {
       ...movementState.budget,
       [movingUnit.role]: movementState.budget[movingUnit.role] - 1,
     }
+    const updatedMoved =
+      movementState.movedUnitIds.includes(movingUnit.id)
+        ? movementState.movedUnitIds
+        : [...movementState.movedUnitIds, movingUnit.id]
     if (movingUnit.role === 'tactician') {
       increaseEnergy(movingUnit.owner)
     }
@@ -266,13 +312,17 @@ export const useGameState = () => {
       nextBudget.mage = 0
       nextBudget.tactician = 0
     }
-    const completed = nextBudget.swordsman === 0 && nextBudget.mage === 0 && nextBudget.tactician === 0
+    const nextStateForCheck: MovementState = {
+      ...movementState,
+      budget: nextBudget,
+      movedUnitIds: updatedMoved,
+    }
+    const completed = areAllRolesComplete(nextStateForCheck)
     setMovementState(
       completed
         ? null
         : {
-            ...movementState,
-            budget: nextBudget,
+            ...nextStateForCheck,
             selectedUnitId: undefined,
             destinations: [],
           },

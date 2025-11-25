@@ -126,6 +126,7 @@ export const startDiceRoll = ({ player, action, dice, launchRoll, onMovementStar
     budget: { ...budget },
     destinations: [],
     locked: true,
+    movedUnitIds: [],
   })
 }
 

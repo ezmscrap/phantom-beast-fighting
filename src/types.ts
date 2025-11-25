@@ -90,6 +90,7 @@ export interface MovementState {
   selectedUnitId?: string
   destinations: BoardCell[]
   locked: boolean
+  movedUnitIds: string[]
 }
 
 export interface ActionSelectionState {
