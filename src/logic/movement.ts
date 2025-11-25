@@ -1,4 +1,4 @@
-import { columns, dragonOffsets, griffinOffsets, rows, unicornOffsets } from '../constants'
+import { columns, griffinOffsets, rows, unicornOffsets } from '../constants'
 import type { BoardCell, Unit } from '../types'
 
 const wrapIndex = (value: number, max: number) => ((value % max) + max) % max
@@ -29,8 +29,7 @@ export const buildBoardMap = (units: Unit[]) => {
 export const computeLegalMoves = (unit: Unit, board: Map<BoardCell, Unit>, wrap: boolean): BoardCell[] => {
   const { row, column } = unit.position ? cellToCoords(unit.position) : { row: -1, column: -1 }
   if (row === -1 || column === -1) return []
-  const offsets =
-    unit.base === 'dragon' ? dragonOffsets : unit.base === 'griffin' ? griffinOffsets : unicornOffsets
+  const offsets = unit.base === 'griffin' ? griffinOffsets : unicornOffsets
   const results: BoardCell[] = []
   const maxRow = rows.length
   const maxCol = columns.length
@@ -42,6 +41,46 @@ export const computeLegalMoves = (unit: Unit, board: Map<BoardCell, Unit>, wrap:
       return null
     }
     return coordsToCell(y, x)
+  }
+
+  if (unit.base === 'dragon') {
+    const directions: Array<[number, number]> = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+      [-1, -1],
+      [-1, 1],
+      [1, -1],
+      [1, 1],
+    ]
+
+    const tryPush = (cell: BoardCell, occupant?: Unit) => {
+      if (!occupant || occupant.owner !== unit.owner) {
+        results.push(cell)
+      }
+    }
+
+    directions.forEach(([dy, dx]) => {
+      const firstCell = applyWrap(row + dy, column + dx)
+      if (!firstCell) return
+      const firstOccupant = board.get(firstCell)
+
+      if (!firstOccupant) {
+        tryPush(firstCell)
+        const secondCell = applyWrap(row + dy * 2, column + dx * 2)
+        if (!secondCell) return
+        const secondOccupant = board.get(secondCell)
+        tryPush(secondCell, secondOccupant)
+        return
+      }
+
+      if (firstOccupant.owner !== unit.owner) {
+        tryPush(firstCell, firstOccupant)
+      }
+    })
+
+    return results
   }
 
   offsets.forEach(([dy, dx]) => {
