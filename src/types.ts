@@ -91,6 +91,7 @@ export interface MovementState {
   destinations: BoardCell[]
   locked: boolean
   movedUnitIds: string[]
+  moveCount: number
 }
 
 export interface ActionSelectionState {

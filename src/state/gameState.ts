@@ -31,6 +31,7 @@ import type {
 
 const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
 const CLASS_TYPES: ClassType[] = ['swordsman', 'mage', 'tactician']
+const MAX_COMEBACK_MOVES = 2
 
 const createInitialPlayers = () => ({
   A: {
@@ -168,13 +169,16 @@ export const useGameState = () => {
 
   const activeMovementUnits = useMemo(() => {
     if (!movementState) return []
+    const comebackLimited =
+      movementState.action === 'comeback' && movementState.moveCount >= MAX_COMEBACK_MOVES
     return units.filter(
       (unit) =>
         unit.owner === movementState.player &&
         unit.status === 'deployed' &&
         movementState.budget[unit.role] > 0 &&
         !movementState.movedUnitIds.includes(unit.id) &&
-        !isRoleMovementComplete(movementState, unit.role),
+        !isRoleMovementComplete(movementState, unit.role) &&
+        !comebackLimited,
     )
   }, [units, movementState, isRoleMovementComplete])
 
@@ -262,6 +266,7 @@ export const useGameState = () => {
 
   const handleSelectUnitForMovement = (unit: Unit) => {
     if (!movementState) return
+    if (movementState.action === 'comeback' && movementState.moveCount >= MAX_COMEBACK_MOVES) return
     const classBudget = movementState.budget[unit.role]
     if (
       classBudget <= 0 ||
@@ -298,7 +303,7 @@ export const useGameState = () => {
       ...movementState.budget,
       [movingUnit.role]: movementState.budget[movingUnit.role] - 1,
     }
-    const updatedMoved =
+    let updatedMoved =
       movementState.movedUnitIds.includes(movingUnit.id)
         ? movementState.movedUnitIds
         : [...movementState.movedUnitIds, movingUnit.id]
@@ -309,10 +314,19 @@ export const useGameState = () => {
       handleRemoveUnit(occupant)
       playAudio(classAttackAudio[movingUnit.role])
     }
+    const nextMoveCount = movementState.moveCount + 1
+    if (movementState.action === 'comeback' && nextMoveCount >= MAX_COMEBACK_MOVES) {
+      const allPlayerUnits = units
+        .filter((unit) => unit.owner === movementState.player && unit.status === 'deployed')
+        .map((unit) => unit.id)
+      const union = new Set([...updatedMoved, ...allPlayerUnits])
+      updatedMoved = Array.from(union)
+    }
     const nextStateForCheck: MovementState = {
       ...movementState,
       budget: nextBudget,
       movedUnitIds: updatedMoved,
+      moveCount: nextMoveCount,
     }
     const completed = areAllRolesComplete(nextStateForCheck)
     setMovementState(
