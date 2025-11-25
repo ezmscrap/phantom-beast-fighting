@@ -308,9 +308,6 @@ export const useGameState = () => {
     if (occupant && occupant.owner !== movingUnit.owner) {
       handleRemoveUnit(occupant)
       playAudio(classAttackAudio[movingUnit.role])
-      nextBudget.swordsman = 0
-      nextBudget.mage = 0
-      nextBudget.tactician = 0
     }
     const nextStateForCheck: MovementState = {
       ...movementState,
