@@ -3,10 +3,11 @@ import type { DiceSlotState } from '../../types'
 interface DiceTrayProps {
   diceSlots: DiceSlotState[]
   onSlotClick: (slotId: DiceSlotState['id']) => void
+  highlight?: boolean
 }
 
-export const DiceTray = ({ diceSlots, onSlotClick }: DiceTrayProps) => (
-  <div className="dice-tray">
+export const DiceTray = ({ diceSlots, onSlotClick, highlight = false }: DiceTrayProps) => (
+  <div className={`dice-tray ${highlight ? 'is-highlighted' : ''}`}>
     <h3>サイコロ群置き場</h3>
     <div className="dice-slots">
       {diceSlots.map((slot) => (

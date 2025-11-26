@@ -232,6 +232,10 @@ function App() {
     }
   }, [step, movementState, diceOverlay, activeStepPlayer, victor, goToNextStep])
 
+  const isCreationStep = step >= 2 && step <= 5
+  const isEnergySelectionStep = step === 7 || step === 12
+  const isDicePlacementStep = step === 6
+
   const renderProcedureControls = () => {
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
@@ -420,7 +424,7 @@ function App() {
       </header>
       <main className="board-layout">
         <section className="board-area">
-          <DiceTray diceSlots={diceSlots} onSlotClick={handleDiceSlotClick} />
+          <DiceTray diceSlots={diceSlots} onSlotClick={handleDiceSlotClick} highlight={isDicePlacementStep} />
           <GameBoard
             boardMap={boardMap}
             movementState={movementState}
@@ -452,26 +456,30 @@ function App() {
                   </div>
                 ))}
               </div>
-              <div className="card-counts">
-                <p>ユニット作成用カード</p>
-                <ul>
-                  {(Object.keys(baseDisplayNames) as (keyof typeof baseDisplayNames)[]).map((base) => (
-                    <li key={base}>
-                      {baseDisplayNames[base]}: {players[playerId].baseCards[base]}
-                    </li>
-                  ))}
-                </ul>
-                <ul>
-                  {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
-                    <li key={role}>
-                      {classDisplayNames[role]}: {players[playerId].classCards[role]}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <button disabled={![7, 12].includes(step) || actionSelection?.player === playerId} onClick={() => handleActionSelection(playerId, 'standard')}>
-                次アクション選択
-              </button>
+              {isCreationStep ? (
+                <div className="card-counts">
+                  <p>ユニット作成用カード</p>
+                  <ul>
+                    {(Object.keys(baseDisplayNames) as (keyof typeof baseDisplayNames)[]).map((base) => (
+                      <li key={base}>
+                        {baseDisplayNames[base]}: {players[playerId].baseCards[base]}
+                      </li>
+                    ))}
+                  </ul>
+                  <ul>
+                    {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
+                      <li key={role}>
+                        {classDisplayNames[role]}: {players[playerId].classCards[role]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {isEnergySelectionStep ? (
+                <button disabled={actionSelection?.player === playerId} onClick={() => handleActionSelection(playerId, 'standard')}>
+                  次アクション選択
+                </button>
+              ) : null}
             </section>
           ))}
           <section className="procedure-panel">

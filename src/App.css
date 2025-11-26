@@ -99,6 +99,17 @@ header h1 {
 
 .dice-tray {
   margin-top: 0;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.dice-tray.is-highlighted {
+  border: 1px solid rgba(255, 198, 91, 0.8);
+  box-shadow: 0 0 18px rgba(255, 198, 91, 0.5);
+}
+
+.dice-tray.is-highlighted .dice-slot {
+  border-color: rgba(255, 198, 91, 0.9);
+  animation: diceSlotPulse 1.2s ease-in-out infinite;
 }
 
 .dice-slots {
@@ -127,6 +138,18 @@ header h1 {
 .dice-slot.gold {
   background: linear-gradient(135deg, #f5d678, #c1900a);
   color: #2c1900;
+}
+
+@keyframes diceSlotPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 198, 91, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(255, 198, 91, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 198, 91, 0.5);
+  }
 }
 
 .sidebar {
