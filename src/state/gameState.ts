@@ -31,7 +31,22 @@ import type {
 
 const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
 const CLASS_TYPES: ClassType[] = ['swordsman', 'mage', 'tactician']
-const MAX_COMEBACK_MOVES = 2
+const MOVEMENT_LIMITS: Partial<Record<ActionType, number>> = {
+  strategy: 1,
+  comeback: 2,
+}
+
+const getMovementLimit = (action: ActionType) => MOVEMENT_LIMITS[action] ?? null
+
+const hasReachedMovementLimit = (state: MovementState, moveCount?: number) => {
+  const limit = getMovementLimit(state.action)
+  if (limit == null) return false
+  const effectiveCount = typeof moveCount === 'number' ? moveCount : state.moveCount
+  return effectiveCount >= limit
+}
+
+const collectDeployedUnitIds = (units: Unit[], player: PlayerId) =>
+  units.filter((unit) => unit.owner === player && unit.status === 'deployed').map((unit) => unit.id)
 
 const createInitialPlayers = () => ({
   A: {
@@ -169,8 +184,7 @@ export const useGameState = () => {
 
   const activeMovementUnits = useMemo(() => {
     if (!movementState) return []
-    const comebackLimited =
-      movementState.action === 'comeback' && movementState.moveCount >= MAX_COMEBACK_MOVES
+    const moveLimitReached = hasReachedMovementLimit(movementState)
     return units.filter(
       (unit) =>
         unit.owner === movementState.player &&
@@ -178,7 +192,7 @@ export const useGameState = () => {
         movementState.budget[unit.role] > 0 &&
         !movementState.movedUnitIds.includes(unit.id) &&
         !isRoleMovementComplete(movementState, unit.role) &&
-        !comebackLimited,
+        !moveLimitReached,
     )
   }, [units, movementState, isRoleMovementComplete])
 
@@ -266,7 +280,7 @@ export const useGameState = () => {
 
   const handleSelectUnitForMovement = (unit: Unit) => {
     if (!movementState) return
-    if (movementState.action === 'comeback' && movementState.moveCount >= MAX_COMEBACK_MOVES) return
+    if (hasReachedMovementLimit(movementState)) return
     const classBudget = movementState.budget[unit.role]
     if (
       classBudget <= 0 ||
@@ -315,10 +329,9 @@ export const useGameState = () => {
       playAudio(classAttackAudio[movingUnit.role])
     }
     const nextMoveCount = movementState.moveCount + 1
-    if (movementState.action === 'comeback' && nextMoveCount >= MAX_COMEBACK_MOVES) {
-      const allPlayerUnits = units
-        .filter((unit) => unit.owner === movementState.player && unit.status === 'deployed')
-        .map((unit) => unit.id)
+    const limitReachedAfterMove = hasReachedMovementLimit(movementState, nextMoveCount)
+    if (limitReachedAfterMove) {
+      const allPlayerUnits = collectDeployedUnitIds(units, movementState.player)
       const union = new Set([...updatedMoved, ...allPlayerUnits])
       updatedMoved = Array.from(union)
     }
