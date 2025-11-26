@@ -1,12 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  baseDisplayNames,
-  classDisplayNames,
-  columns,
-  rows,
-  stepDescriptions,
-} from './constants'
-import type { ActionType, BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
+import { baseDisplayNames, classDisplayNames, stepDescriptions } from './constants'
+import type { ActionType, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
 import type { DiceVisual } from './components/DiceRollerOverlay'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
@@ -15,6 +9,8 @@ import { UnitPlacementModal } from './components/modals/UnitPlacementModal'
 import { MiniBoardModal } from './components/modals/MiniBoardModal'
 import { ActionSelectionModal } from './components/modals/ActionSelectionModal'
 import { PlayerSetupModal } from './components/modals/PlayerSetupModal'
+import { DiceTray } from './components/board/DiceTray'
+import { GameBoard } from './components/board/GameBoard'
 import { useGameState, createUnitLabel } from './state/gameState'
 import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
@@ -177,17 +173,6 @@ function App() {
       openRedistribution: setDiceRedistribution,
       setRedistributionChoice,
     })
-  }
-
-  const renderCellContent = (cell: BoardCell) => {
-    const unit = boardMap.get(cell)
-    if (!unit) return null
-    return (
-      <div className={`piece piece--${unit.owner}`}>
-        <span>{baseDisplayNames[unit.base][0]}</span>
-        <small>{classDisplayNames[unit.role][0]}</small>
-      </div>
-    )
   }
 
   const debugNextActions = useMemo(
@@ -435,65 +420,15 @@ function App() {
       </header>
       <main className="board-layout">
         <section className="board-area">
-          <div className="board-grid">
-            {rows.map((row) => (
-              <div key={row} className="board-row">
-                {columns.map((column) => {
-                  const cell = `${column}${row}` as BoardCell
-                  const occupant = boardMap.get(cell)
-                  const highlight = (movementState?.selectedUnitId && movementState.destinations.includes(cell)) || false
-                  const swapSelectable = Boolean(placementState?.swapMode) && occupant && occupant.owner === placementState?.player
-                  const swapSelected = swapSelectable && placementState?.swapSelection.includes(occupant?.id ?? '')
-                  return (
-                    <button
-                      key={cell}
-                      className={`board-cell ${highlight ? 'highlight' : ''} ${swapSelected ? 'swap-selected' : ''}`}
-                      onClick={() => {
-                        if (placementState?.swapMode) {
-                          if (swapSelectable && occupant) {
-                            handleSwapSelection(occupant.id)
-                          }
-                          return
-                        }
-                        if (movementState) {
-                          if (movementState.selectedUnitId && movementState.destinations.includes(cell)) {
-                            handleMoveUnit(cell)
-                            return
-                          }
-                          if (
-                            !movementState.selectedUnitId &&
-                            occupant &&
-                            occupant.owner === movementState.player &&
-                            movementState.budget[occupant.role] > 0
-                          ) {
-                            handleSelectUnitForMovement(occupant)
-                            return
-                          }
-                        }
-                      }}
-                    >
-                      {renderCellContent(cell)}
-                    </button>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-          <div className="dice-tray">
-            <h3>サイコロ群置き場</h3>
-            <div className="dice-slots">
-              {diceSlots.map((slot) => (
-                <button
-                  key={slot.id}
-                  className={`dice-slot ${slot.die ?? 'empty'}`}
-                  onClick={() => handleDiceSlotClick(slot.id)}
-                >
-                  <span>{slot.id}</span>
-                  <strong>{slot.die ? (slot.die === 'silver' ? '銀' : '金') : '未配置'}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
+          <DiceTray diceSlots={diceSlots} onSlotClick={handleDiceSlotClick} />
+          <GameBoard
+            boardMap={boardMap}
+            movementState={movementState}
+            placementState={placementState}
+            onSwapSelection={handleSwapSelection}
+            onSelectUnitForMovement={handleSelectUnitForMovement}
+            onMoveUnit={handleMoveUnit}
+          />
         </section>
         <aside className="sidebar">
           {(['A', 'B'] as PlayerId[]).map((playerId) => (
