@@ -357,11 +357,12 @@ export const DiceRollerOverlay = ({
   }
 
   return (
-    <div className="dice-overlay">
-      <div className="dice-stage">
-        <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: CAMERA_SETTINGS.position, fov: CAMERA_SETTINGS.fov }}>
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
+    <>
+      <div className="dice-overlay" aria-hidden="true">
+        <div className="dice-stage">
+          <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: CAMERA_SETTINGS.position, fov: CAMERA_SETTINGS.fov }}>
+            <ambientLight intensity={0.6} />
+            <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
           <Physics gravity={[0, -9.81, 0]}>
             <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
             <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
@@ -387,6 +388,7 @@ export const DiceRollerOverlay = ({
             <OrbitControls enablePan={false} enableZoom={false} />
           </Suspense>
         </Canvas>
+        </div>
       </div>
       <div className="dice-overlay__summary">
         <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
@@ -398,6 +400,6 @@ export const DiceRollerOverlay = ({
           <p>物理演算中...</p>
         )}
       </div>
-    </div>
+    </>
   )
 }
