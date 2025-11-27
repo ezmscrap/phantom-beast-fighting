@@ -170,6 +170,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  z-index: 90;
 }
 
 .player-panel.is-active {
@@ -366,24 +367,11 @@ header h1 {
   font-size: 0.95rem;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.8rem;
-}
-
-.ghost {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
 .dice-overlay {
+  pointer-events: none;
   position: fixed;
   inset: 0;
-  background: transparent;
-  z-index: 5;
-  pointer-events: none;
+  z-index: 20;
 }
 
 .dice-stage {
@@ -396,6 +384,18 @@ header h1 {
 .dice-stage canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.8rem;
+}
+
+.ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .dice-overlay__summary {
@@ -431,6 +431,12 @@ header h1 {
 
 .debug-panel input[type='range'] {
   width: 100%;
+}
+
+.debug-panel__note {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.6rem 0 0.2rem;
 }
 
 .victory-overlay {

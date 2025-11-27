@@ -144,4 +144,24 @@ export interface DebugDiceSettings {
     torque: number
     minHorizontal: number
   }
+  launchSpread: number
+  body: {
+    mass: number
+    linearDamping: number
+    angularDamping: number
+  }
+  contact: {
+    floorFriction: number
+    floorRestitution: number
+    wallFriction: number
+    wallRestitution: number
+  }
+  launchOrigin: {
+    x: number
+    z: number
+  }
+  launchVector: {
+    x: number
+    z: number
+  }
 }

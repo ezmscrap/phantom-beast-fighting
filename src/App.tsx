@@ -374,6 +374,11 @@ function App() {
       dieSize: appConfig.diceDebug.dieSize,
       spawnHeight: appConfig.diceDebug.spawnHeight,
       impulse: { ...appConfig.diceDebug.impulse },
+      launchSpread: appConfig.diceDebug.launchSpread,
+      body: { ...appConfig.diceDebug.body },
+      contact: { ...appConfig.diceDebug.contact },
+      launchOrigin: { ...appConfig.diceDebug.launchOrigin },
+      launchVector: { ...appConfig.diceDebug.launchVector },
     })
     setPlayers({
       A: {
@@ -610,7 +615,7 @@ function App() {
             <input
               type="range"
               min="3"
-              max="10"
+              max="25"
               step="0.1"
               value={debugSettings.spawnHeight}
               onChange={(e) =>
@@ -627,7 +632,7 @@ function App() {
               <input
                 type="range"
                 min={axis === 'y' ? 3 : 0}
-                max={axis === 'y' ? 12 : 15}
+                max={axis === 'y' ? 20 : 250000000000000000000000000}
                 step="0.1"
                 value={debugSettings.impulse[axis]}
                 onChange={(e) => {
@@ -640,6 +645,209 @@ function App() {
               />
             </label>
           ))}
+          <label>
+            同時投擲時の広がり ({debugSettings.launchSpread.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={debugSettings.launchSpread}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.launchSpread
+                setDebugSettings((prev) => ({ ...prev, launchSpread: value }))
+              }}
+            />
+          </label>
+          <p className="debug-panel__note">質量と減衰（軽くするほど跳ね返りやすくなります）</p>
+          <label>
+            質量 ({debugSettings.body.mass.toFixed(2)})
+            <input
+              type="range"
+              min="0.2"
+              max="1"
+              step="0.01"
+              value={debugSettings.body.mass}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.body.mass
+                setDebugSettings((prev) => ({ ...prev, body: { ...prev.body, mass: value } }))
+              }}
+            />
+          </label>
+          <label>
+            線形減衰 ({debugSettings.body.linearDamping.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="0.2"
+              step="0.005"
+              value={debugSettings.body.linearDamping}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.body.linearDamping
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  body: { ...prev.body, linearDamping: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            角減衰 ({debugSettings.body.angularDamping.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="0.15"
+              step="0.005"
+              value={debugSettings.body.angularDamping}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.body.angularDamping
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  body: { ...prev.body, angularDamping: value },
+                }))
+              }}
+            />
+          </label>
+          <p className="debug-panel__note">床/壁との摩擦・反発係数</p>
+          <label>
+            床の摩擦 ({debugSettings.contact.floorFriction.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value={debugSettings.contact.floorFriction}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.contact.floorFriction
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  contact: { ...prev.contact, floorFriction: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            床の反発係数 ({debugSettings.contact.floorRestitution.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={debugSettings.contact.floorRestitution}
+              onChange={(e) => {
+                const value =
+                  parseFloat(e.target.value) || debugSettings.contact.floorRestitution
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  contact: { ...prev.contact, floorRestitution: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            壁の摩擦 ({debugSettings.contact.wallFriction.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value={debugSettings.contact.wallFriction}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.contact.wallFriction
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  contact: { ...prev.contact, wallFriction: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            壁の反発係数 ({debugSettings.contact.wallRestitution.toFixed(2)})
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={debugSettings.contact.wallRestitution}
+              onChange={(e) => {
+                const value =
+                  parseFloat(e.target.value) || debugSettings.contact.wallRestitution
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  contact: { ...prev.contact, wallRestitution: value },
+                }))
+              }}
+            />
+          </label>
+          <p className="debug-panel__note">投げ込み開始位置/方向（XZ）</p>
+          <label>
+            開始位置 X ({debugSettings.launchOrigin.x.toFixed(1)})
+            <input
+              type="number"
+              step="0.5"
+              min="-10"
+              max="10"
+              value={debugSettings.launchOrigin.x}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.launchOrigin.x
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  launchOrigin: { ...prev.launchOrigin, x: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            開始位置 Z ({debugSettings.launchOrigin.z.toFixed(1)})
+            <input
+              type="number"
+              step="0.5"
+              min="-10"
+              max="10"
+              value={debugSettings.launchOrigin.z}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.launchOrigin.z
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  launchOrigin: { ...prev.launchOrigin, z: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            投げる方向 X ({debugSettings.launchVector.x.toFixed(0)})
+            <input
+              type="number"
+              step="10"
+              min="-1500"
+              max="0"
+              value={debugSettings.launchVector.x}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.launchVector.x
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  launchVector: { ...prev.launchVector, x: value },
+                }))
+              }}
+            />
+          </label>
+          <label>
+            投げる方向 Z ({debugSettings.launchVector.z.toFixed(0)})
+            <input
+              type="number"
+              step="10"
+              min="0"
+              max="1500"
+              value={debugSettings.launchVector.z}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || debugSettings.launchVector.z
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  launchVector: { ...prev.launchVector, z: value },
+                }))
+              }}
+            />
+          </label>
           <button onClick={handleDebugRoll}>現在の設定で再投擲</button>
         </section>
       ) : null}
@@ -653,6 +861,7 @@ function App() {
             onClose={confirmDiceResult}
             onResolve={handleDiceResolve}
             rollSessionId={rollSessionId}
+            debugSettings={diceOverlay.debugSettings ?? debugSettings}
           />
         ) : null}
       </Suspense>

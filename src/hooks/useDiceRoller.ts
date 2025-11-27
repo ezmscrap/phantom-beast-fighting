@@ -24,6 +24,11 @@ export const useDiceRoller = () => {
     dieSize: appConfig.diceDebug.dieSize,
     spawnHeight: appConfig.diceDebug.spawnHeight,
     impulse: { ...appConfig.diceDebug.impulse },
+    launchSpread: appConfig.diceDebug.launchSpread,
+    body: { ...appConfig.diceDebug.body },
+    contact: { ...appConfig.diceDebug.contact },
+    launchOrigin: { ...appConfig.diceDebug.launchOrigin },
+    launchVector: { ...appConfig.diceDebug.launchVector },
   })
 
   const debugSettingsRef = useRef(debugSettings)
@@ -37,7 +42,7 @@ export const useDiceRoller = () => {
       const visuals = createVisuals(diceTypes)
       playAudio(diceTypes.length === 1 ? 'diceSingle' : 'diceMulti')
       const budget = createEmptyBudget()
-      setOverlay({ dice: visuals, tallies: { ...budget } })
+      setOverlay({ dice: visuals, tallies: { ...budget }, debugSettings: debugSettingsRef.current })
       return { budget }
     },
     [],

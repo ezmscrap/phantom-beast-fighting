@@ -1,11 +1,10 @@
 import { Canvas, useFrame, useLoader } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import { Physics, useBox, usePlane, useContactMaterial } from '@react-three/cannon'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { TextureLoader } from 'three'
 import { GOLD_FACES, SILVER_FACES, diceFaceColors } from '../constants'
-import type { ClassType, DiceType, MovementBudget } from '../types'
+import type { ClassType, DiceType, MovementBudget, DebugDiceSettings } from '../types'
 import { resolveAssetPath } from '../utils/assetPath'
 
 export interface DiceVisual {
@@ -22,6 +21,7 @@ interface DiceRollerOverlayProps {
   onClose: () => void
   rollSessionId: string
   onResolve: (dice: DiceVisual[], tallies: MovementBudget) => void
+  debugSettings?: DebugDiceSettings
 }
 
 const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
@@ -33,25 +33,73 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
  * 各ダイスの3Dモデルと物理挙動を管理するコンポーネント。
  * 位置/速度を監視し、一定時間静止したら出目を通知する。
  */
-const DEFAULT_ROLL_SETTINGS = {
+const DEFAULT_ROLL_SETTINGS: DebugDiceSettings = {
   dieSize: 0.5,
   spawnHeight: 16,
   impulse: {
-    x: 9,
-    y: 9,
-    z: 9,
-    torque: 16,
-    minHorizontal: 240,
+    x: 2400000000000000,
+    y: 18,
+    z: 2400000000000000,
+    torque: 40,
+    minHorizontal: 600,
   },
+  launchSpread: 0.1,
   launchOrigin: {
-    x: 4,
-    z: -4,
+    x: 2.8,
+    z: -2.8,
   },
   launchVector: {
-    x: -600,
-    z: 600,
+    x: -1500000000000,
+    z: 1500000000000,
   },
-} as const
+  body: {
+    mass: 0.035,
+    linearDamping: 0.0003,
+    angularDamping: 0.0002,
+  },
+  contact: {
+    floorFriction: 0.8,
+    floorRestitution: 0.95,
+    wallFriction: 0.8,
+    wallRestitution: 0.85,
+  },
+}
+
+type RollSettings = DebugDiceSettings
+
+const mergeRollSettings = (overrides?: DebugDiceSettings): RollSettings => ({
+  dieSize: overrides?.dieSize ?? DEFAULT_ROLL_SETTINGS.dieSize,
+  spawnHeight: overrides?.spawnHeight ?? DEFAULT_ROLL_SETTINGS.spawnHeight,
+  impulse: {
+    x: overrides?.impulse.x ?? DEFAULT_ROLL_SETTINGS.impulse.x,
+    y: overrides?.impulse.y ?? DEFAULT_ROLL_SETTINGS.impulse.y,
+    z: overrides?.impulse.z ?? DEFAULT_ROLL_SETTINGS.impulse.z,
+    torque: overrides?.impulse.torque ?? DEFAULT_ROLL_SETTINGS.impulse.torque,
+    minHorizontal: overrides?.impulse.minHorizontal ?? DEFAULT_ROLL_SETTINGS.impulse.minHorizontal,
+  },
+  launchSpread: overrides?.launchSpread ?? DEFAULT_ROLL_SETTINGS.launchSpread,
+  launchOrigin: {
+    x: overrides?.launchOrigin.x ?? DEFAULT_ROLL_SETTINGS.launchOrigin.x,
+    z: overrides?.launchOrigin.z ?? DEFAULT_ROLL_SETTINGS.launchOrigin.z,
+  },
+  launchVector: {
+    x: overrides?.launchVector.x ?? DEFAULT_ROLL_SETTINGS.launchVector.x,
+    z: overrides?.launchVector.z ?? DEFAULT_ROLL_SETTINGS.launchVector.z,
+  },
+  body: {
+    mass: overrides?.body.mass ?? DEFAULT_ROLL_SETTINGS.body.mass,
+    linearDamping: overrides?.body.linearDamping ?? DEFAULT_ROLL_SETTINGS.body.linearDamping,
+    angularDamping: overrides?.body.angularDamping ?? DEFAULT_ROLL_SETTINGS.body.angularDamping,
+  },
+  contact: {
+    floorFriction: overrides?.contact.floorFriction ?? DEFAULT_ROLL_SETTINGS.contact.floorFriction,
+    floorRestitution:
+      overrides?.contact.floorRestitution ?? DEFAULT_ROLL_SETTINGS.contact.floorRestitution,
+    wallFriction: overrides?.contact.wallFriction ?? DEFAULT_ROLL_SETTINGS.contact.wallFriction,
+    wallRestitution:
+      overrides?.contact.wallRestitution ?? DEFAULT_ROLL_SETTINGS.contact.wallRestitution,
+  },
+})
 
 const DiceMesh = ({
   type,
@@ -60,6 +108,9 @@ const DiceMesh = ({
   material,
   onResult,
   registerShooter,
+  settings,
+  index,
+  total,
 }: {
   /** 銀/金などダイスの種類。出目テクスチャと効果音の判定に使う。 */
   type: DiceType
@@ -73,24 +124,37 @@ const DiceMesh = ({
   onResult: (faceIndex: number, result: ClassType) => void
   /** 親から投げ込み指示を受け取るための登録関数。 */
   registerShooter: (shoot: () => void) => void
+  settings: RollSettings
+  index: number
+  total: number
 }) => {
   /** ダイスモデルの一辺。設定から取得し、形状/座標計算に使用。 */
-  const dieSize = DEFAULT_ROLL_SETTINGS.dieSize
+  const dieSize = settings.dieSize
   /** ダイスを落とす初期高さ。最低3以上に補正し、落下演出の安定性を確保。 */
-  const spawnHeight = Math.max(DEFAULT_ROLL_SETTINGS.spawnHeight, 3)
-  /** ダイスを投げ込む開始位置（画面右上を想定した固定座標）。 */
-  const startX = DEFAULT_ROLL_SETTINGS.launchOrigin.x
-  /** ダイスの開始位置（右上から中央へ向けるための固定Z）。 */
-  const startZ = DEFAULT_ROLL_SETTINGS.launchOrigin.z
+  const spawnHeight = Math.max(settings.spawnHeight, 3)
+  /** 同時投擲時の広がり補正。 */
+  const spreadCenter = (total - 1) / 2
+  const lateralIndex = index - spreadCenter
+  const spreadDistance = settings.launchSpread * lateralIndex
+  const direction = new THREE.Vector2(settings.launchVector.x, settings.launchVector.z)
+  const perpendicular = direction.lengthSq()
+    ? new THREE.Vector2(direction.y, -direction.x).normalize()
+    : new THREE.Vector2(1, 0)
+  const offsetX = perpendicular.x * spreadDistance
+  const offsetZ = perpendicular.y * spreadDistance
+  const clampWithinArena = (value: number) => Math.max(-5, Math.min(5, value))
+  /** ダイスを投げ込む開始位置（壁の内部に収める）。 */
+  const startX = clampWithinArena(settings.launchOrigin.x + offsetX)
+  const startZ = clampWithinArena(settings.launchOrigin.z + offsetZ)
   /**
    * useBoxでcannonボディを生成。サイズ/質量/減衰などを設定し、
    * 乱数を使って初期姿勢をバラつかせる。
    */
   const [ref, api] = useBox<THREE.Group>(() => ({
     args: [dieSize, dieSize, dieSize],
-    mass: 0.55,
-    linearDamping: 0.08,
-    angularDamping: 0.05,
+    mass: settings.body.mass,
+    linearDamping: settings.body.linearDamping,
+    angularDamping: settings.body.angularDamping,
     position: [
       startX,
       1 + spawnHeight,
@@ -127,16 +191,30 @@ const DiceMesh = ({
    */
   const shoot = useCallback(() => {
     if (!settled) {
-      const { y } = DEFAULT_ROLL_SETTINGS.impulse
-      const impulseX = DEFAULT_ROLL_SETTINGS.launchVector.x
-      const impulseZ = DEFAULT_ROLL_SETTINGS.launchVector.z
-      api.applyImpulse([impulseX, y + 2.5, impulseZ], [0, 0, 0])
-      api.velocity.set(impulseX * 0.4, y * 0.2, impulseZ * 0.4)
-      const torqueScale = DEFAULT_ROLL_SETTINGS.impulse.torque
+      const verticalImpulse = settings.impulse.y
+      const spreadBoost = 180
+      let impulseX =
+        settings.launchVector.x + settings.impulse.x + offsetX * spreadBoost
+      let impulseZ =
+        settings.launchVector.z + settings.impulse.z + offsetZ * spreadBoost
+      const planar = Math.hypot(impulseX, impulseZ) || 1
+      const minHorizontal = settings.impulse.minHorizontal
+      if (planar < minHorizontal) {
+        const scale = minHorizontal / planar
+        impulseX *= scale
+        impulseZ *= scale
+      }
+      api.applyImpulse([impulseX, verticalImpulse + 2.5, impulseZ], [0, 0, 0])
+      api.velocity.set(impulseX * 0.4, verticalImpulse * 0.2, impulseZ * 0.4)
+      const torqueScale = settings.impulse.torque
       const randomFactor = 0.5 + Math.random()
-      api.applyTorque([impulseX * 0.4 * randomFactor, torqueScale * 0.2 * randomFactor, impulseZ * 0.4 * randomFactor])
+      api.applyTorque([
+        impulseX * 0.3 * randomFactor,
+        torqueScale * 0.2 * randomFactor,
+        impulseZ * 0.3 * randomFactor,
+      ])
     }
-  }, [api, settled])
+  }, [api, settled, settings, offsetX, offsetZ])
 
   useEffect(() => {
     registerShooter(shoot)
@@ -261,15 +339,31 @@ const iconPaths: Record<ClassType, string> = {
   tactician: resolveAssetPath('icons/chess.svg'),
 }
 
-const PhysicsMaterials = ({ floor, wall, dice }: { floor: { name: string; friction: number; restitution: number }; wall: { name: string; friction: number; restitution: number }; dice: { name: string; friction: number; restitution: number } }) => {
-  useContactMaterial(floor, dice, { friction: 0.25, restitution: 0.5 })
-  useContactMaterial(wall, dice, { friction: 0.08, restitution: 0.35 })
+const PhysicsMaterials = ({
+  floor,
+  wall,
+  dice,
+  contact,
+}: {
+  floor: { name: string }
+  wall: { name: string }
+  dice: { name: string }
+  contact: RollSettings['contact']
+}) => {
+  useContactMaterial(floor.name, dice.name, {
+    friction: contact.floorFriction,
+    restitution: contact.floorRestitution,
+  })
+  useContactMaterial(wall.name, dice.name, {
+    friction: contact.wallFriction,
+    restitution: contact.wallRestitution,
+  })
   return null
 }
 
 const CAMERA_SETTINGS = {
-  position: [0, 22, 10] as [number, number, number],
-  fov: 30,
+  position: [0, 28, 0] as [number, number, number],
+  fov: 28,
 }
 
 export const DiceRollerOverlay = ({
@@ -279,12 +373,15 @@ export const DiceRollerOverlay = ({
   tallies,
   rollSessionId,
   onResolve,
+  debugSettings,
 }: DiceRollerOverlayProps) => {
+  /** デバッグ設定または既定値からダイス物理パラメータを生成。 */
+  const rollSettings = useMemo(() => mergeRollSettings(debugSettings), [debugSettings])
   const [settled, setSettled] = useState(false)
   const sessionStartRef = useRef<number>(0)
-  const floorMaterial = useMemo(() => ({ name: 'floor', friction: 0.32, restitution: 0.45 }), [])
-  const wallMaterial = useMemo(() => ({ name: 'wall', friction: 0.06, restitution: 0.3 }), [])
-  const diceMaterial = useMemo(() => ({ name: 'dice', friction: 0.2, restitution: 0.6 }), [])
+  const floorMaterial = useMemo(() => ({ name: 'floor' }), [])
+  const wallMaterial = useMemo(() => ({ name: 'wall' }), [])
+  const diceMaterial = useMemo(() => ({ name: 'dice' }), [])
   const textures = useLoader(TextureLoader, Object.values(iconPaths))
   textures.forEach((texture) => {
     texture.colorSpace = THREE.SRGBColorSpace
@@ -360,13 +457,26 @@ export const DiceRollerOverlay = ({
     <>
       <div className="dice-overlay" aria-hidden="true">
         <div className="dice-stage">
-          <Canvas shadows gl={{ alpha: true, antialias: true }} camera={{ position: CAMERA_SETTINGS.position, fov: CAMERA_SETTINGS.fov }}>
+          <Canvas
+            shadows
+            gl={{ alpha: true, antialias: true }}
+            camera={{ position: CAMERA_SETTINGS.position, fov: CAMERA_SETTINGS.fov }}
+            onCreated={({ camera }) => {
+              camera.position.set(...CAMERA_SETTINGS.position)
+              camera.lookAt(0, 0, 0)
+            }}
+          >
             <ambientLight intensity={0.6} />
             <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow />
           <Physics gravity={[0, -9.81, 0]}>
-            <PhysicsMaterials floor={floorMaterial} wall={wallMaterial} dice={diceMaterial} />
+            <PhysicsMaterials
+              floor={floorMaterial}
+              wall={wallMaterial}
+              dice={diceMaterial}
+              contact={rollSettings.contact}
+            />
             <FloorAndWalls materials={{ floor: floorMaterial.name, wall: wallMaterial.name }} />
-            {dice.map((item) => (
+            {dice.map((item, index) => (
               <DiceMesh
                 key={item.id}
                 type={item.type}
@@ -381,12 +491,12 @@ export const DiceRollerOverlay = ({
                   }
                   shootersRef.current[item.id] = shoot
                 }}
+                settings={rollSettings}
+                index={index}
+                total={dice.length}
               />
             ))}
           </Physics>
-          <Suspense fallback={null}>
-            <OrbitControls enablePan={false} enableZoom={false} />
-          </Suspense>
         </Canvas>
         </div>
       </div>
