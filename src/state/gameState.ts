@@ -91,7 +91,7 @@ export const useGameState = () => {
   const [nameDrafts, setNameDrafts] = useState({ A: 'プレイヤーA', B: 'プレイヤーB' })
   const [nameLocks, setNameLocks] = useState({ A: false, B: false })
   const [initiativeChoice, setInitiativeChoice] = useState<PlayerId>('A')
-  const [victor, setVictor] = useState<PlayerId | null>(null)
+  const [victor, setVictor] = useState<{ player: PlayerId; reason: ClassType } | null>(null)
 
   useEffect(() => {
     if (!placementState) {
@@ -271,7 +271,7 @@ export const useGameState = () => {
           item.role === unit.role,
       ).length
       if (remainingSameClass <= 0) {
-        setVictor(opponentOf(unit.owner))
+        setVictor({ player: opponentOf(unit.owner), reason: unit.role })
       }
       return next
     })

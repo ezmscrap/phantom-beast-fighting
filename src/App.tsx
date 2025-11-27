@@ -227,7 +227,7 @@ function App() {
     if (step !== 11 && step !== 16) return
     if (movementState || diceOverlay) return
     const player = activeStepPlayer
-    if (victor !== player) {
+    if (victor?.player !== player) {
       goToNextStep()
     }
   }, [step, movementState, diceOverlay, activeStepPlayer, victor, goToNextStep])
@@ -656,7 +656,14 @@ function App() {
 
       {victor ? (
         <div className="victory-overlay">
-          <div className="victory-banner">{players[victor].name}の勝利</div>
+          <div className="victory-headline">{players[victor.player].name}の勝利</div>
+          <p className="victory-subtitle">
+            {victor.reason === 'tactician'
+              ? '敵策士を捕らえた'
+              : victor.reason === 'mage'
+                ? 'すべての敵魔術師を盤面から追い出した'
+                : 'すべての敵剣士を無力化した'}
+          </p>
           <button onClick={handleResetGame}>再度ゲームを開始</button>
         </div>
       ) : null}
