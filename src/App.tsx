@@ -435,53 +435,56 @@ function App() {
           />
         </section>
         <aside className="sidebar">
-          {(['A', 'B'] as PlayerId[]).map((playerId) => (
-            <section key={playerId} className="player-panel">
-              <header>
-                <h2>
-                  {players[playerId].name} <small>{playerId === leadingPlayer ? '（先行）' : ''}</small>
-                </h2>
-              </header>
-              <div className="energy-track">
-                {[3, 2, 1].map((threshold, index) => (
-                  <span key={threshold} className={`token ${players[playerId].energy >= threshold ? 'lit' : ''}`} aria-label={`T${3 - index}`} />
-                ))}
-                <p>エネルギー: {players[playerId].energy}</p>
-              </div>
-              <div className="class-counts">
-                {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
-                  <div key={role} className="count-row">
-                    <span>{classDisplayNames[role]}</span>
-                    <strong>{remainingByClass[playerId]?.[role] ?? 0}</strong>
-                  </div>
-                ))}
-              </div>
-              {isCreationStep ? (
-                <div className="card-counts">
-                  <p>ユニット作成用カード</p>
-                  <ul>
-                    {(Object.keys(baseDisplayNames) as (keyof typeof baseDisplayNames)[]).map((base) => (
-                      <li key={base}>
-                        {baseDisplayNames[base]}: {players[playerId].baseCards[base]}
-                      </li>
-                    ))}
-                  </ul>
-                  <ul>
-                    {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
-                      <li key={role}>
-                        {classDisplayNames[role]}: {players[playerId].classCards[role]}
-                      </li>
-                    ))}
-                  </ul>
+          {(['A', 'B'] as PlayerId[]).map((playerId) => {
+            const isActive = activeStepPlayer === playerId
+            return (
+              <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
+                <header>
+                  <h2>
+                    {players[playerId].name} <small>{playerId === leadingPlayer ? '（先行）' : ''}</small>
+                  </h2>
+                </header>
+                <div className="energy-track">
+                  {[3, 2, 1].map((threshold, index) => (
+                    <span key={threshold} className={`token ${players[playerId].energy >= threshold ? 'lit' : ''}`} aria-label={`T${3 - index}`} />
+                  ))}
+                  <p>エネルギー: {players[playerId].energy}</p>
                 </div>
-              ) : null}
-              {isEnergySelectionStep ? (
-                <button disabled={actionSelection?.player === playerId} onClick={() => handleActionSelection(playerId, 'standard')}>
-                  次アクション選択
-                </button>
-              ) : null}
-            </section>
-          ))}
+                <div className="class-counts">
+                  {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
+                    <div key={role} className="count-row">
+                      <span>{classDisplayNames[role]}</span>
+                      <strong>{remainingByClass[playerId]?.[role] ?? 0}</strong>
+                    </div>
+                  ))}
+                </div>
+                {isCreationStep ? (
+                  <div className="card-counts">
+                    <p>ユニット作成用カード</p>
+                    <ul>
+                      {(Object.keys(baseDisplayNames) as (keyof typeof baseDisplayNames)[]).map((base) => (
+                        <li key={base}>
+                          {baseDisplayNames[base]}: {players[playerId].baseCards[base]}
+                        </li>
+                      ))}
+                    </ul>
+                    <ul>
+                      {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
+                        <li key={role}>
+                          {classDisplayNames[role]}: {players[playerId].classCards[role]}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {isEnergySelectionStep ? (
+                  <button disabled={actionSelection?.player === playerId} onClick={() => handleActionSelection(playerId, 'standard')}>
+                    次アクション選択
+                  </button>
+                ) : null}
+              </section>
+            )
+          })}
           <section className="procedure-panel">
             <h2>現在の手順</h2>
             <p>

@@ -170,6 +170,16 @@ header h1 {
   gap: 1rem;
 }
 
+.player-panel.is-active {
+  border-color: rgba(255, 200, 120, 0.9);
+  box-shadow: 0 0 18px rgba(255, 200, 120, 0.6);
+}
+
+.player-panel.is-active h2 {
+  font-weight: 800;
+  color: #ffe7c2;
+}
+
 .player-panel h2 {
   margin: 0 0 0.5rem;
   font-size: 1.2rem;
