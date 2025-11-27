@@ -294,7 +294,7 @@ export const useGameState = () => {
     const wrap = unit.role === 'mage'
     const moves = computeLegalMoves(unit, boardMap, wrap)
     setMovementState({ ...movementState, selectedUnitId: unit.id, destinations: moves })
-    playAudio(baseMoveAudio[unit.base])
+    playAudio('dicePlace')
   }
 
   const handleMoveUnit = (cell: BoardCell) => {
@@ -313,6 +313,7 @@ export const useGameState = () => {
         return unit
       }),
     )
+    playAudio(baseMoveAudio[movingUnit.base])
     const nextBudget: MovementBudget = {
       ...movementState.budget,
       [movingUnit.role]: movementState.budget[movingUnit.role] - 1,
