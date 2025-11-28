@@ -20,6 +20,8 @@ interface DiceDebugConfig {
   }
   /** 同時投擲時の横方向広がり量 */
   launchSpread: number
+  /** アイコンではなく数値表示に切り替えるデバッグモード */
+  numericMode: boolean
   /** サイコロの質量と減衰。軽くすると跳ねやすくなる */
   body: {
     mass: number
@@ -53,34 +55,35 @@ export const appConfig: AppConfig = {
   diceDebug: {
     enabled: false,
     preset: 'silver1',
-    dieSize: 0.9,
+    dieSize: 0.5,
     spawnHeight: 16,
     impulse: {
-      x: 2400000000000000,
+      x: 24,
       y: 18,
-      z: 2400000000000000,
+      z: 24,
       torque: 40,
       minHorizontal: 600,
     },
-    launchSpread: 0.1,
+    launchSpread: 1.1,
+    numericMode: false,
     body: {
-      mass: 0.035,
-      linearDamping: 0.0003,
-      angularDamping: 0.0002,
+      mass: 0.35,
+      linearDamping: 0.03,
+      angularDamping: 0.02,
     },
     contact: {
-      floorFriction: 0.8,
-      floorRestitution: 0.95,
-      wallFriction: 0.8,
-      wallRestitution: 0.85,
+      floorFriction: 0.08,
+      floorRestitution: 0.75,
+      wallFriction: 0.04,
+      wallRestitution: 0.55,
     },
     launchOrigin: {
       x: 2.8,
       z: -2.8,
     },
     launchVector: {
-      x: -1500000000000,
-      z: 1500000000000,
+      x: -1500,
+      z: 1500,
     },
   },
 }

@@ -375,6 +375,7 @@ function App() {
       spawnHeight: appConfig.diceDebug.spawnHeight,
       impulse: { ...appConfig.diceDebug.impulse },
       launchSpread: appConfig.diceDebug.launchSpread,
+      numericMode: appConfig.diceDebug.numericMode,
       body: { ...appConfig.diceDebug.body },
       contact: { ...appConfig.diceDebug.contact },
       launchOrigin: { ...appConfig.diceDebug.launchOrigin },
@@ -658,6 +659,16 @@ function App() {
                 setDebugSettings((prev) => ({ ...prev, launchSpread: value }))
               }}
             />
+          </label>
+          <label className="debug-panel__checkbox">
+            <input
+              type="checkbox"
+              checked={debugSettings.numericMode}
+              onChange={(e) =>
+                setDebugSettings((prev) => ({ ...prev, numericMode: e.target.checked }))
+              }
+            />
+            出目を数字表示にし、一覧で確認する
           </label>
           <p className="debug-panel__note">質量と減衰（軽くするほど跳ね返りやすくなります）</p>
           <label>

@@ -35,33 +35,34 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
  */
 const DEFAULT_ROLL_SETTINGS: DebugDiceSettings = {
   dieSize: 0.5,
-  spawnHeight: 16,
+  spawnHeight: 6,
   impulse: {
-    x: 2400000000000000,
+    x: 24,
     y: 18,
-    z: 2400000000000000,
+    z: 24,
     torque: 40,
     minHorizontal: 600,
   },
-  launchSpread: 0.1,
+  launchSpread: 1.1,
+  numericMode: false,
   launchOrigin: {
     x: 2.8,
     z: -2.8,
   },
   launchVector: {
-    x: -1500000000000,
-    z: 1500000000000,
+    x: -1500,
+    z: 1500,
   },
   body: {
-    mass: 0.035,
-    linearDamping: 0.0003,
-    angularDamping: 0.0002,
+    mass: 0.35,
+    linearDamping: 0.03,
+    angularDamping: 0.02,
   },
   contact: {
-    floorFriction: 0.8,
-    floorRestitution: 0.95,
-    wallFriction: 0.8,
-    wallRestitution: 0.85,
+    floorFriction: 0.08,
+    floorRestitution: 0.75,
+    wallFriction: 0.04,
+    wallRestitution: 0.55,
   },
 }
 
@@ -78,6 +79,7 @@ const mergeRollSettings = (overrides?: DebugDiceSettings): RollSettings => ({
     minHorizontal: overrides?.impulse.minHorizontal ?? DEFAULT_ROLL_SETTINGS.impulse.minHorizontal,
   },
   launchSpread: overrides?.launchSpread ?? DEFAULT_ROLL_SETTINGS.launchSpread,
+  numericMode: overrides?.numericMode ?? DEFAULT_ROLL_SETTINGS.numericMode,
   launchOrigin: {
     x: overrides?.launchOrigin.x ?? DEFAULT_ROLL_SETTINGS.launchOrigin.x,
     z: overrides?.launchOrigin.z ?? DEFAULT_ROLL_SETTINGS.launchOrigin.z,
@@ -111,6 +113,7 @@ const DiceMesh = ({
   settings,
   index,
   total,
+  numericTextures,
 }: {
   /** 銀/金などダイスの種類。出目テクスチャと効果音の判定に使う。 */
   type: DiceType
@@ -127,6 +130,8 @@ const DiceMesh = ({
   settings: RollSettings
   index: number
   total: number
+  /** 数字面で使用するテクスチャ。 */
+  numericTextures: THREE.Texture[]
 }) => {
   /** ダイスモデルの一辺。設定から取得し、形状/座標計算に使用。 */
   const dieSize = settings.dieSize
@@ -266,7 +271,7 @@ const DiceMesh = ({
           <meshStandardMaterial key={index} color={color} />
         ))}
       </mesh>
-      {FACE_DEFINITIONS[type].map((face, index) => {
+      {FACE_DEFINITIONS[type].map((face, faceIndex) => {
         const offset = dieSize / 2 + 0.01
         const iconSize = dieSize * 0.7
         const transforms: Array<{ position: [number, number, number]; rotation: [number, number, number] }> = [
@@ -277,10 +282,24 @@ const DiceMesh = ({
           { position: [0, 0, offset], rotation: [0, 0, 0] },
           { position: [0, 0, -offset], rotation: [0, Math.PI, 0] },
         ]
-        const transform = transforms[index]
+        const transform = transforms[faceIndex]
+        if (settings.numericMode) {
+          const numericTexture = numericTextures[faceIndex]
+          return (
+            <mesh
+              key={`num-${faceIndex}`}
+              position={transform.position}
+              rotation={transform.rotation}
+              renderOrder={2}
+            >
+              <planeGeometry args={[iconSize, iconSize]} />
+              <meshBasicMaterial map={numericTexture} transparent opacity={0.95} color="#ffffff" />
+            </mesh>
+          )
+        }
         return (
           <mesh
-            key={`${face}-${index}`}
+            key={`${face}-${faceIndex}`}
             position={transform.position}
             rotation={transform.rotation}
             renderOrder={1}
@@ -314,7 +333,7 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
     return (
       <mesh key={`${position.join('-')}`} ref={wallRef} receiveShadow castShadow>
         <boxGeometry args={[20, 12, 0.5]} />
-        <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.2} transparent depthWrite={false} />
       </mesh>
     )
   }
@@ -323,7 +342,7 @@ const FloorAndWalls = ({ materials }: { materials: { floor: string; wall: string
     <>
       <mesh ref={floorRef} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshPhysicalMaterial color="#cfe2ff" opacity={0.01} transparent depthWrite={false} />
+        <meshPhysicalMaterial color="#cfe2ff" opacity={0.2} transparent depthWrite={false} />
       </mesh>
       {createWall([0, 6, -5.5], [0, 0, 0])}
       {createWall([0, 6, 5.5], [0, 0, 0])}
@@ -337,6 +356,32 @@ const iconPaths: Record<ClassType, string> = {
   swordsman: resolveAssetPath('icons/swords.svg'),
   mage: resolveAssetPath('icons/wand.svg'),
   tactician: resolveAssetPath('icons/chess.svg'),
+}
+
+const createNumericFaceTextures = () => {
+  const textures: THREE.Texture[] = []
+  for (let i = 1; i <= 6; i += 1) {
+    const size = 256
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.clearRect(0, 0, size, size)
+      ctx.fillStyle = 'rgba(0,0,0,0)'
+      ctx.fillRect(0, 0, size, size)
+      ctx.fillStyle = '#ffffff'
+      ctx.font = `bold ${size * 0.7}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(i), size / 2, size / 2)
+    }
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.needsUpdate = true
+    textures.push(texture)
+  }
+  return textures
 }
 
 const PhysicsMaterials = ({
@@ -377,11 +422,13 @@ export const DiceRollerOverlay = ({
 }: DiceRollerOverlayProps) => {
   /** デバッグ設定または既定値からダイス物理パラメータを生成。 */
   const rollSettings = useMemo(() => mergeRollSettings(debugSettings), [debugSettings])
+  const numericMode = rollSettings.numericMode
   const [settled, setSettled] = useState(false)
   const sessionStartRef = useRef<number>(0)
   const floorMaterial = useMemo(() => ({ name: 'floor' }), [])
   const wallMaterial = useMemo(() => ({ name: 'wall' }), [])
   const diceMaterial = useMemo(() => ({ name: 'dice' }), [])
+  const numericTextures = useMemo(() => createNumericFaceTextures(), [])
   const textures = useLoader(TextureLoader, Object.values(iconPaths))
   textures.forEach((texture) => {
     texture.colorSpace = THREE.SRGBColorSpace
@@ -494,6 +541,7 @@ export const DiceRollerOverlay = ({
                 settings={rollSettings}
                 index={index}
                 total={dice.length}
+                numericTextures={numericTextures}
               />
             ))}
           </Physics>
@@ -501,7 +549,17 @@ export const DiceRollerOverlay = ({
         </div>
       </div>
       <div className="dice-overlay__summary">
-        <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
+        {numericMode ? (
+          <div className="dice-results-list">
+            {dice.map((die) => (
+              <p key={die.id}>
+                {die.type === 'gold' ? '金' : '銀'}: {die.faceIndex != null ? die.faceIndex + 1 : '---'}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
+        )}
         {settled ? (
           <button className="primary" onClick={onClose}>
             結果を適用する

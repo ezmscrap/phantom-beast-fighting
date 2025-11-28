@@ -145,6 +145,7 @@ export interface DebugDiceSettings {
     minHorizontal: number
   }
   launchSpread: number
+  numericMode: boolean
   body: {
     mass: number
     linearDamping: number

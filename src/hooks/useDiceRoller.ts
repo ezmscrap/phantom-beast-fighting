@@ -25,6 +25,7 @@ export const useDiceRoller = () => {
     spawnHeight: appConfig.diceDebug.spawnHeight,
     impulse: { ...appConfig.diceDebug.impulse },
     launchSpread: appConfig.diceDebug.launchSpread,
+    numericMode: appConfig.diceDebug.numericMode,
     body: { ...appConfig.diceDebug.body },
     contact: { ...appConfig.diceDebug.contact },
     launchOrigin: { ...appConfig.diceDebug.launchOrigin },
