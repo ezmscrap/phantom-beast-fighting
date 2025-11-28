@@ -133,10 +133,16 @@ const DiceMesh = ({
   /** 数字面で使用するテクスチャ。 */
   numericTextures: THREE.Texture[]
 }) => {
+  /** 停止判定に使用するしきい値（速度） */
+  const SPEED_THRESHOLD = 0.15
+  /** 静止状態が続いたと見なすフレーム数。 */
+  const STABLE_FRAME_THRESHOLD = 20
+  /** 上面候補が同一で安定したか確認する追加フレーム数。 */
+  const FACE_CONFIRMATION_FRAMES = 8
   /** ダイスモデルの一辺。設定から取得し、形状/座標計算に使用。 */
   const dieSize = settings.dieSize
   /** ダイスを落とす初期高さ。最低3以上に補正し、落下演出の安定性を確保。 */
-  const spawnHeight = Math.max(settings.spawnHeight, 3)
+  const spawnHeight = Math.max(settings.spawnHeight, 12)
   /** 同時投擲時の広がり補正。 */
   const spreadCenter = (total - 1) / 2
   const lateralIndex = index - spreadCenter
@@ -177,6 +183,10 @@ const DiceMesh = ({
   const resolvedRef = useRef(false)
   /** 連続で静止判定を満たしたフレーム数を記録するカウンタ。 */
   const stillFrames = useRef(0)
+  /** 一時的に検出した上面候補。一定時間同じ値なら確定する。 */
+  const pendingResultRef = useRef<{ faceIndex: number; result: ClassType } | null>(null)
+  /** pendingResultRef が継続したフレーム数。 */
+  const pendingStableFramesRef = useRef(0)
 
   /** cannon API から速度ベクトルを購読し、参照へ格納。 */
   useEffect(() => {
@@ -239,10 +249,9 @@ const DiceMesh = ({
     const linearSpeed = Math.hypot(linear[0], linear[1], linear[2])
     /** 現在の角速度の大きさ。回転が止まっているかを測る。 */
     const angularSpeed = Math.hypot(angular[0], angular[1], angular[2])
-    if (linearSpeed < 0.2 && angularSpeed < 0.2) {
+    if (linearSpeed < SPEED_THRESHOLD && angularSpeed < SPEED_THRESHOLD) {
       stillFrames.current += 1
-      if (stillFrames.current > 20 && ref.current) {
-        resolvedRef.current = true
+      if (stillFrames.current > STABLE_FRAME_THRESHOLD && ref.current) {
         /** 現在のボディ回転をワールド座標のクォータニオンとして取得。 */
         const quaternion = ref.current.getWorldQuaternion(new THREE.Quaternion())
         /** 上方向ベクトルをダイスの姿勢に合わせて回転させ、どちらの面が上を向いているか測る。 */
@@ -266,10 +275,22 @@ const DiceMesh = ({
         /** 出目配列 (銀/金) から上面の兵種を取得する。 */
         const faceDefinitions = type === 'silver' ? SILVER_FACES : GOLD_FACES
         const result = faceDefinitions[topFace.index]
-        onResult(topFace.index, result)
+        const pending = pendingResultRef.current
+        if (!pending || pending.faceIndex !== topFace.index) {
+          pendingResultRef.current = { faceIndex: topFace.index, result }
+          pendingStableFramesRef.current = 1
+        } else {
+          pendingStableFramesRef.current += 1
+          if (pendingStableFramesRef.current > FACE_CONFIRMATION_FRAMES) {
+            resolvedRef.current = true
+            onResult(topFace.index, result)
+          }
+        }
       }
     } else {
       stillFrames.current = 0
+      pendingResultRef.current = null
+      pendingStableFramesRef.current = 0
     }
   })
 
