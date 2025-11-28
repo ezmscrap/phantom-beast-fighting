@@ -226,21 +226,31 @@ const DiceMesh = ({
   }, [registerShooter, shoot])
 
   /**
-   * 毎フレーム速度を監視し、一定フレーム静止したら上面の向きを判定して出目を通知する。
-   * 静止判定に linearSpeed/ angularSpeed を使用。
+   * 毎フレーム呼び出される監視ループ。
+   * 1) 位置/回転の速度を計測し、定義済みしきい値以下の状態を計数する。
+   * 2) 十分なフレーム静止していればワールド座標の上方向ベクトルを取得し、上面を算出。
+   * 3) 面インデックスと兵種を求め、`onResult` に通知して1個のダイスを確定させる。
    */
   useFrame(() => {
     if (resolvedRef.current) return
     const linear = velocity.current
     const angular = angularVelocity.current
+    /** 現在の平行移動速度の大きさ。停止判定の基本軸。 */
     const linearSpeed = Math.hypot(linear[0], linear[1], linear[2])
+    /** 現在の角速度の大きさ。回転が止まっているかを測る。 */
     const angularSpeed = Math.hypot(angular[0], angular[1], angular[2])
     if (linearSpeed < 0.2 && angularSpeed < 0.2) {
       stillFrames.current += 1
       if (stillFrames.current > 20 && ref.current) {
         resolvedRef.current = true
+        /** 現在のボディ回転をワールド座標のクォータニオンとして取得。 */
         const quaternion = ref.current.getWorldQuaternion(new THREE.Quaternion())
+        /** 上方向ベクトルをダイスの姿勢に合わせて回転させ、どちらの面が上を向いているか測る。 */
         const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion)
+        /**
+         * 各軸方向に対する上向き度合いを保持し、`value` が最大の面を上面と見なす。
+         * index: ダイス面の添字、value: 上方向ベクトルとの一致度。
+         */
         const axisContributions = [
           { index: 0, value: up.x },
           { index: 1, value: -up.x },
@@ -249,9 +259,11 @@ const DiceMesh = ({
           { index: 4, value: up.z },
           { index: 5, value: -up.z },
         ]
+        /** value が最も大きい面を抽出し、上面を確定する。 */
         const topFace = axisContributions.reduce((prev, current) =>
           current.value > prev.value ? current : prev,
         )
+        /** 出目配列 (銀/金) から上面の兵種を取得する。 */
         const faceDefinitions = type === 'silver' ? SILVER_FACES : GOLD_FACES
         const result = faceDefinitions[topFace.index]
         onResult(topFace.index, result)
