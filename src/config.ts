@@ -47,16 +47,22 @@ interface DiceDebugConfig {
   }
 }
 
+interface GameDebugConfig {
+  /** ゲームステータス（nextActionsなど）をUI上に表示するデバッグモード */
+  showStatus: boolean
+}
+
 export interface AppConfig {
   diceDebug: DiceDebugConfig
+  gameDebug: GameDebugConfig
 }
 
 export const appConfig: AppConfig = {
   diceDebug: {
     enabled: false,
-    preset: 'silver1',
+    preset: 'mixedSSG',
     dieSize: 0.5,
-    spawnHeight: 16,
+    spawnHeight: 6,
     impulse: {
       x: 24,
       y: 18,
@@ -85,6 +91,9 @@ export const appConfig: AppConfig = {
       x: -1500,
       z: 1500,
     },
+  },
+  gameDebug: {
+    showStatus: false,
   },
 }
 

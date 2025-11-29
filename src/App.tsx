@@ -97,6 +97,7 @@ function App() {
     handleResolve: updateDiceOverlay,
   } = useDiceRoller()
   const [rollSessionId, setRollSessionId] = useState(() => Date.now().toString())
+  const showNextActionsDebug = appConfig.gameDebug.showStatus
 
   const activeStepPlayer = getActivePlayerForStep(step, leadingPlayer)
 
@@ -523,7 +524,7 @@ function App() {
         </aside>
       </main>
 
-      <div className="debug-next-actions">{debugNextActions}</div>
+      {showNextActionsDebug ? <div className="debug-next-actions">{debugNextActions}</div> : null}
 
       <PlayerSetupModal
         isOpen={step === 1 && !victor}
