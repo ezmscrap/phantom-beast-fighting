@@ -14,35 +14,37 @@
 
 | 分類 | 内容 |
 | --- | --- |
-| フロントエンド | Vite + React 18 + TypeScript |
-| 3D/物理 | `three`, `@react-three/fiber`, `@react-three/cannon` |
-| UI スタイル | 独自 CSS (`src/App.css`, `src/index.css`) |
-| アイコン/音声 | Material Symbols Outlined、Springin’ Sound Stock |
-| 状態管理 | React Hooks (`useState`, `useMemo`, `useReducer` なし) |
+| フロントエンド | React 19 + TypeScript + Vite |
+| 3D/物理 | `three` を直接利用した自前の `DiceEngine` と、`cannon-es` を用いた物理制御 (`src/lib/diceEngine/`) |
+| UI レイヤー | React Hooks とコンポーネント分割（`PlayerSidebar`、`DiceRollStage` など） |
+| 状態管理 | カスタム Hook (`useGameState` → `useUnitLogic` / `useMovementLogic` / `useActionPlanLogic`) |
+| スタイル | シングル CSS (`src/App.css`, `src/index.css`) |
+| 効果音/アイコン | Springin’ Sound Stock、Material Symbols Outlined |
 
-## ディレクトリ構成
+## ディレクトリ構成（抜粋）
 
 ```
-.
-├── src/
-│   ├── App.tsx              # 主要ロジック（手順進行・状態管理）
-│   ├── components/
-│   │   ├── DiceRollerOverlay.tsx  # ダイス描画/物理
-│   │   └── Modal.tsx
-│   ├── constants.ts         # ラベルや初期値
-│   ├── types.ts             # 型定義
-│   ├── audio.ts             # 効果音再生ヘルパー
-│   ├── main.tsx / index.css # エントリーポイント
-│   └── App.css              # 画面スタイル
-├── public/
-│   ├── audio/               # 効果音
-│   └── icons/               # ダイス面アイコン
-├── docs/
-│   ├── specification.md     # 仕様メモ
-│   ├── todo.md              # リファクタリング TODO
-│   └── function-reference.md# 関数仕様
-├── package.json / tsconfig*.json / vite.config.ts
-└── README.md
+src/
+├── App.tsx                         # SPA 本体（各カスタム Hook を統合）
+├── components/
+│   ├── board/                      # 盤面 UI（GameBoard / DiceTray）
+│   ├── dice/
+│   │   ├── DiceRollStage.tsx       # 3D ダイス演出のラッパー
+│   │   ├── DiceResultsSummary.tsx  # 結果サマリ
+│   │   └── types.ts                # DiceVisual 型
+│   ├── debug/DiceDebugPanel.tsx    # デバッグ UI（サブグループ化済み）
+│   ├── sidebar/PlayerSidebar.tsx   # プレイヤー状況・手順パネル
+│   └── modals/...                  # モーダル群
+├── lib/diceEngine/                 # 自前の 3D ダイス実装
+│   ├── DiceEngine.ts               # 公開 API
+│   ├── physics.ts                  # Three.js / cannon-es のセットアップ
+│   ├── textures.ts                 # サイ面テクスチャ生成
+│   ├── notation.ts                 # `Xd6` 表記のパース/生成
+│   └── orientation.ts / utils.ts   # 姿勢処理・共通ユーティリティ
+├── logic/actions/                  # 手順判定・ロール開始など
+├── state/game/                     # useGameState を構成するロジック別 Hook
+├── constants.ts / types.ts         # 定数・型定義
+└── main.tsx / App.css / index.css  # エントリーポイントとスタイル
 ```
 
 ## セットアップ & スクリプト
@@ -54,12 +56,31 @@ npm run build           # 型チェック + 本番ビルド
 npm run preview         # ビルド済み成果物をローカルで確認
 ```
 
-## デバッグモードについて
+GitHub Pages などサブディレクトリ配信する場合は Vite の `base` を指定します。
 
-`src/config.ts` の `appConfig.diceDebug.enabled` を `true` にすると以下が有効になります。
-- プレイヤー名/ユニットをテスト用に固定。
-- 画面左側に「ダイスデバッグ設定」パネルが表示され、サイコロのサイズ/高さ/インパルスを調整可能。
-- 画面表示と同時にダイス演出が開始され、兵種別移動可能数も通常と同様に表示されます。
+**例:**
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  base: '/pbf/',   // 例: https://<user>.github.io/pbf/ で配信する場合
+  plugins: [react()],
+  build: {
+    chunkSizeWarningLimit: 2000,
+  },
+})
+```
+
+## デバッグモード / 表示
+
+`src/config.ts` の `appConfig.diceDebug.enabled` を `true` にすると、以下の機能が有効になります。
+
+- **ダイスロールデバッグ**: `DiceDebugPanel` が表示され、サイコロのサイズ/生成高さ/投擲インパルス/接触パラメータ/投擲方向などをリアルタイムに変更できます。更新は `DiceEngine` に即反映されます。
+- **デバッグ情報表示**: `appConfig.gameDebug.showStatus` によって `nextActions` のデバッグ表示を制御できます。ロジック上の状態確認に便利です。
+- **テストプレイ用初期化**: プレイヤー名・配置ユニットをデバッグ用にセットし、手順をアクションフェーズにスキップします。
 
 ## 既知の注意点 / リファクタリング
 
@@ -70,6 +91,7 @@ npm run preview         # ビルド済み成果物をローカルで確認
 ## 謝辞 / クレジット
 
 - **原作**: [ふわふわ盤友会](https://x.com/ff_boardgames) 「幻獣闘技」。
+- **ダイスロール実装の参考**: MIT ライセンスの [@3d-dice/dice-box-threejs](https://github.com/3d-dice/dice-box-threejs) のアルゴリズム・表記を参考にしつつ、当リポジトリではコード/定数を新規実装しました。
 - **サウンド**: [Springin’ Sound Stock](https://www.springin.org/sound-stock/)。詳細は下表参照。
 - **アイコン**: Material Symbols Outlined（Swords / Auto Fix High / Chess）。
 
