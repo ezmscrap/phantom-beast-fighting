@@ -1,361 +1,76 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  INITIAL_BASE_CARDS,
-  INITIAL_CLASS_CARDS,
-  actionCosts,
-  baseDisplayNames,
-  baseMoveAudio,
-  classAttackAudio,
-  classDisplayNames,
-  columns,
-  placementRows,
-  rows,
-} from '../constants'
-import { playAudio } from '../audio'
-import { buildBoardMap, computeLegalMoves } from '../logic/movement'
-import type {
-  ActionSelectionState,
-  ActionType,
-  BaseType,
-  BoardCell,
-  ClassType,
-  MiniBoardState,
-  MovementBudget,
-  MovementState,
-  NextActions,
-  PlacementState,
-  PlayerId,
-  ProcedureStep,
-  Unit,
-} from '../types'
-
-const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
-const CLASS_TYPES: ClassType[] = ['swordsman', 'mage', 'tactician']
-const MOVEMENT_LIMITS: Partial<Record<ActionType, number>> = {
-  strategy: 1,
-  comeback: 2,
-}
-
-const getMovementLimit = (action: ActionType) => MOVEMENT_LIMITS[action] ?? null
-
-const hasReachedMovementLimit = (state: MovementState, moveCount?: number) => {
-  const limit = getMovementLimit(state.action)
-  if (limit == null) return false
-  const effectiveCount = typeof moveCount === 'number' ? moveCount : state.moveCount
-  return effectiveCount >= limit
-}
-
-const collectDeployedUnitIds = (units: Unit[], player: PlayerId) =>
-  units.filter((unit) => unit.owner === player && unit.status === 'deployed').map((unit) => unit.id)
-
-const createInitialPlayers = () => ({
-  A: {
-    id: 'A' as PlayerId,
-    name: 'プレイヤーA',
-    color: 'white' as const,
-    energy: 0,
-    baseCards: { ...INITIAL_BASE_CARDS },
-    classCards: { ...INITIAL_CLASS_CARDS },
-  },
-  B: {
-    id: 'B' as PlayerId,
-    name: 'プレイヤーB',
-    color: 'black' as const,
-    energy: 0,
-    baseCards: { ...INITIAL_BASE_CARDS },
-    classCards: { ...INITIAL_CLASS_CARDS },
-  },
-})
-
-const opponentOf = (player: PlayerId): PlayerId => (player === 'A' ? 'B' : 'A')
-
-export const createUnitLabel = (unit: Unit) => `${baseDisplayNames[unit.base]}${classDisplayNames[unit.role]}`
+import { useCallback, useState } from 'react'
+import type { PlayerId, ProcedureStep } from '../types'
+import { useUnitLogic } from './game/useUnitLogic'
+import { useMovementLogic } from './game/useMovementLogic'
+import { useActionPlanLogic } from './game/useActionPlanLogic'
+export { createUnitLabel } from './game/helpers'
 
 export const useGameState = () => {
-  const [players, setPlayers] = useState(() => createInitialPlayers())
-  const [units, setUnits] = useState<Unit[]>([])
-  const [unitCounter, setUnitCounter] = useState(0)
-  /** 現在の手順（1〜16）。ゲーム進行やボタン表示の基準になる。 */
+  const {
+    players,
+    setPlayers,
+    units,
+    setUnits,
+    placementState,
+    setPlacementState,
+    creationRequest,
+    setCreationRequest,
+    creationSelection,
+    setCreationSelection,
+    miniBoardState,
+    setMiniBoardState,
+    victor,
+    setVictor,
+    boardMap,
+    remainingByClass,
+    creationRemaining,
+    activePlacementUnits,
+    currentPlacementTargets,
+    increaseEnergy,
+    decreaseEnergy,
+    handleCreateUnit,
+    handlePlaceUnit,
+    handleSwapSelection,
+    placementSelectionHandler,
+    toggleSwapMode,
+    handleMiniBoardClick,
+    cancelMiniBoard,
+    handleRemoveUnit,
+    resetUnitState,
+  } = useUnitLogic()
+
+  const {
+    actionSelection,
+    setActionSelection,
+    nextActions,
+    setNextActions,
+    handleActionSelection,
+    confirmAction,
+    resetActionPlan,
+  } = useActionPlanLogic({ players, decreaseEnergy })
+
+  const {
+    movementState,
+    setMovementState,
+    activeMovementUnits,
+    handleSelectUnitForMovement,
+    handleMoveUnit,
+    resetMovementState,
+  } = useMovementLogic({
+    units,
+    setUnits,
+    boardMap,
+    increaseEnergy,
+    handleRemoveUnit,
+    setNextActions,
+  })
+
   const [step, setStep] = useState<ProcedureStep>(1)
   const [leadingPlayer, setLeadingPlayer] = useState<PlayerId>('A')
-  const [placementState, setPlacementState] = useState<PlacementState | null>(null)
-  const [movementState, setMovementState] = useState<MovementState | null>(null)
-  /** 次アクション選択モーダルで一時的に保持するラジオ選択内容。 */
-  const [actionSelection, setActionSelection] = useState<ActionSelectionState | null>(null)
-  /** エネルギー消費決定後に確定した各プレイヤーの次アクション。 */
-  const [nextActions, setNextActions] = useState<NextActions>({ A: null, B: null })
-  const [creationRequest, setCreationRequest] = useState<{ player: PlayerId; step: ProcedureStep } | null>(null)
-  const [creationSelection, setCreationSelection] = useState<{ base?: BaseType; role?: ClassType }>({})
-  const [miniBoardState, setMiniBoardState] = useState<MiniBoardState | null>(null)
   const [nameStage, setNameStage] = useState<'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'>('names')
   const [nameDrafts, setNameDrafts] = useState({ A: 'プレイヤーA', B: 'プレイヤーB' })
   const [nameLocks, setNameLocks] = useState({ A: false, B: false })
   const [initiativeChoice, setInitiativeChoice] = useState<PlayerId>('A')
-  const [victor, setVictor] = useState<{ player: PlayerId; reason: ClassType } | null>(null)
-
-  useEffect(() => {
-    if (!placementState) {
-      setMiniBoardState(null)
-    }
-  }, [placementState])
-
-  const boardMap = useMemo(() => buildBoardMap(units), [units])
-
-  const remainingByClass = useMemo(() => {
-    const template = { swordsman: 0, mage: 0, tactician: 0 }
-    return units.reduce(
-      (acc, unit) => {
-        if (unit.status !== 'removed') {
-          acc[unit.owner][unit.role] += 1
-        }
-        return acc
-      },
-      {
-        A: { ...template },
-        B: { ...template },
-      },
-    )
-  }, [units])
-
-  const creationProgress = useMemo(() => {
-    const base = { 2: 0, 3: 0, 4: 0, 5: 0 }
-    return units.reduce((acc, unit) => {
-      if (unit.createdAtStep && acc[unit.createdAtStep as 2 | 3 | 4 | 5] !== undefined) {
-        acc[unit.createdAtStep as 2 | 3 | 4 | 5] += 1
-      }
-      return acc
-    }, { ...base })
-  }, [units])
-
-  const creationRemaining = useMemo(() => {
-    const steps: Array<2 | 3 | 4 | 5> = [2, 3, 4, 5]
-    return steps.reduce((acc, stepKey) => {
-      const required = creationRequirements[stepKey]
-      acc[stepKey] = Math.max(0, required - creationProgress[stepKey])
-      return acc
-    }, { ...creationRequirements } as Record<2 | 3 | 4 | 5, number>)
-  }, [creationProgress])
-
-  const activePlacementUnits = useMemo(() => {
-    if (!placementState) return []
-    return units.filter((unit) => unit.owner === placementState.player && unit.status === 'preDeployment')
-  }, [placementState, units])
-
-  const currentPlacementTargets = useMemo(() => {
-    if (!placementState || !placementState.selectedUnitId) return []
-    const targetRow = placementRows[placementState.player] - 1
-    return columns
-      .map((col) => `${col}${rows[targetRow]}` as BoardCell)
-      .filter((cell) => {
-        const occupant = boardMap.get(cell)
-        return !(occupant && occupant.owner === placementState.player)
-      })
-  }, [placementState, boardMap])
-
-  const isRoleMovementComplete = useCallback(
-    (state: MovementState, role: ClassType, movedIds?: string[]) => {
-      if (state.budget[role] <= 0) return true
-      const used = movedIds ?? state.movedUnitIds
-      return !units.some(
-        (unit) =>
-          unit.owner === state.player &&
-          unit.status === 'deployed' &&
-          unit.role === role &&
-          !used.includes(unit.id),
-      )
-    },
-    [units],
-  )
-
-  const areAllRolesComplete = useCallback(
-    (state: MovementState, movedIds?: string[]) =>
-      CLASS_TYPES.every((role) => isRoleMovementComplete(state, role, movedIds)),
-    [isRoleMovementComplete],
-  )
-
-  useEffect(() => {
-    if (!movementState || movementState.locked) return
-    if (areAllRolesComplete(movementState)) {
-      const completedPlayer = movementState.player
-      setMovementState(null)
-      setNextActions((prev) => ({ ...prev, [completedPlayer]: null }))
-    }
-  }, [movementState, areAllRolesComplete, setMovementState, setNextActions])
-
-  const activeMovementUnits = useMemo(() => {
-    if (!movementState) return []
-    const moveLimitReached = hasReachedMovementLimit(movementState)
-    return units.filter(
-      (unit) =>
-        unit.owner === movementState.player &&
-        unit.status === 'deployed' &&
-        movementState.budget[unit.role] > 0 &&
-        !movementState.movedUnitIds.includes(unit.id) &&
-        !isRoleMovementComplete(movementState, unit.role) &&
-        !moveLimitReached,
-    )
-  }, [units, movementState, isRoleMovementComplete])
-
-  const handleCreateUnit = (player: PlayerId, base: BaseType, role: ClassType, stepTag?: ProcedureStep) => {
-    const owner = players[player]
-    if (owner.baseCards[base] <= 0 || owner.classCards[role] <= 0) {
-      return
-    }
-    const newUnit: Unit = {
-      id: `unit-${player}-${unitCounter + 1}`,
-      owner: player,
-      base,
-      role,
-      status: 'preDeployment' as const,
-      createdAtStep: stepTag,
-    }
-    setUnits((prev) => [...prev, newUnit])
-    setUnitCounter((prev) => prev + 1)
-    setPlayers((prev) => ({
-      ...prev,
-      [player]: {
-        ...prev[player],
-        baseCards: { ...prev[player].baseCards, [base]: prev[player].baseCards[base] - 1 },
-        classCards: { ...prev[player].classCards, [role]: prev[player].classCards[role] - 1 },
-      },
-    }))
-    setPlacementState({ player, swapMode: false, swapSelection: [], stepTag })
-    playAudio('button')
-  }
-
-  const handlePlaceUnit = (unitId: string, cell: BoardCell) => {
-    setUnits((prev) =>
-      prev.map((unit) => {
-        if (unit.id === unitId) {
-          return { ...unit, status: 'deployed' as const, position: cell }
-        }
-        return unit
-      }),
-    )
-    setPlacementState((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        selectedUnitId: undefined,
-        swapMode: false,
-        swapSelection: [],
-      }
-    })
-    playAudio('unitPlace')
-  }
-
-  const increaseEnergy = (player: PlayerId, amount = 1) => {
-    setPlayers((prev) => ({
-      ...prev,
-      [player]: { ...prev[player], energy: Math.min(3, prev[player].energy + amount) },
-    }))
-  }
-
-  const decreaseEnergy = (player: PlayerId, amount: number) => {
-    setPlayers((prev) => ({
-      ...prev,
-      [player]: { ...prev[player], energy: Math.max(0, prev[player].energy - amount) },
-    }))
-  }
-
-  const handleRemoveUnit = (unit: Unit) => {
-    setUnits((prev) => {
-      const next = prev.map((item) =>
-        item.id === unit.id ? { ...item, status: 'removed' as const, position: undefined } : item,
-      )
-      const remainingSameClass = next.filter(
-        (item) =>
-          item.id !== unit.id &&
-          item.owner === unit.owner &&
-          item.status !== 'removed' &&
-          item.role === unit.role,
-      ).length
-      if (remainingSameClass <= 0) {
-        setVictor({ player: opponentOf(unit.owner), reason: unit.role })
-      }
-      return next
-    })
-    increaseEnergy(unit.owner)
-  }
-
-  const handleSelectUnitForMovement = (unit: Unit) => {
-    if (!movementState) return
-    if (hasReachedMovementLimit(movementState)) return
-    const classBudget = movementState.budget[unit.role]
-    if (
-      classBudget <= 0 ||
-      unit.owner !== movementState.player ||
-      unit.status !== 'deployed' ||
-      movementState.movedUnitIds.includes(unit.id) ||
-      isRoleMovementComplete(movementState, unit.role)
-    ) {
-      return
-    }
-    const wrap = unit.role === 'mage'
-    const moves = computeLegalMoves(unit, boardMap, wrap)
-    setMovementState({ ...movementState, selectedUnitId: unit.id, destinations: moves })
-    playAudio('dicePlace')
-  }
-
-  const handleMoveUnit = (cell: BoardCell) => {
-    if (!movementState || !movementState.selectedUnitId) return
-    const movingUnit = units.find((unit) => unit.id === movementState.selectedUnitId)
-    if (!movingUnit) return
-    if (movementState.movedUnitIds.includes(movingUnit.id)) return
-    const legal = movementState.destinations.includes(cell)
-    if (!legal) return
-    const occupant = boardMap.get(cell)
-    setUnits((prev) =>
-      prev.map((unit) => {
-        if (unit.id === movingUnit.id) {
-          return { ...unit, position: cell, status: 'deployed' as const }
-        }
-        return unit
-      }),
-    )
-    playAudio(baseMoveAudio[movingUnit.base])
-    const nextBudget: MovementBudget = {
-      ...movementState.budget,
-      [movingUnit.role]: movementState.budget[movingUnit.role] - 1,
-    }
-    let updatedMoved =
-      movementState.movedUnitIds.includes(movingUnit.id)
-        ? movementState.movedUnitIds
-        : [...movementState.movedUnitIds, movingUnit.id]
-    if (movingUnit.role === 'tactician') {
-      increaseEnergy(movingUnit.owner)
-    }
-    if (occupant && occupant.owner !== movingUnit.owner) {
-      handleRemoveUnit(occupant)
-      playAudio(classAttackAudio[movingUnit.role])
-    }
-    const nextMoveCount = movementState.moveCount + 1
-    const limitReachedAfterMove = hasReachedMovementLimit(movementState, nextMoveCount)
-    if (limitReachedAfterMove) {
-      const allPlayerUnits = collectDeployedUnitIds(units, movementState.player)
-      const union = new Set([...updatedMoved, ...allPlayerUnits])
-      updatedMoved = Array.from(union)
-    }
-    const nextStateForCheck: MovementState = {
-      ...movementState,
-      budget: nextBudget,
-      movedUnitIds: updatedMoved,
-      moveCount: nextMoveCount,
-    }
-    const completed = areAllRolesComplete(nextStateForCheck)
-    setMovementState(
-      completed
-        ? null
-        : {
-            ...nextStateForCheck,
-            selectedUnitId: undefined,
-            destinations: [],
-          },
-    )
-    if (completed) {
-      setNextActions((prev) => ({ ...prev, [movementState.player]: null }))
-    }
-  }
 
   const goToNextStep = useCallback(() => {
     setStep((prev) => {
@@ -366,127 +81,16 @@ export const useGameState = () => {
     })
   }, [])
 
-  const placementSelectionHandler = (unitId: string) => {
-    if (!placementState) return
-    setPlacementState({ ...placementState, selectedUnitId: unitId })
-    setMiniBoardState({ mode: 'placement', player: placementState.player })
-  }
-
-  const handleSwapUnits = (firstId: string, secondId: string) => {
-    const first = units.find((unit) => unit.id === firstId)
-    const second = units.find((unit) => unit.id === secondId)
-    if (!first?.position || !second?.position) return
-    setUnits((prev) =>
-      prev.map((unit) => {
-        if (unit.id === firstId) {
-          return { ...unit, position: second.position }
-        }
-        if (unit.id === secondId) {
-          return { ...unit, position: first.position }
-        }
-        return unit
-      }),
-    )
-    setPlacementState((prev) => (prev ? { ...prev, swapMode: false, swapSelection: [] } : prev))
-    setMiniBoardState((state) => (state?.mode === 'swap' ? null : state))
-    playAudio('unitPlace')
-  }
-
-  const handleSwapSelection = (unitId: string) => {
-    setPlacementState((prev) => {
-      if (!prev) return prev
-      const already = prev.swapSelection.includes(unitId)
-      const nextSelection = already ? prev.swapSelection.filter((id) => id !== unitId) : [...prev.swapSelection, unitId]
-      if (nextSelection.length === 2) {
-        handleSwapUnits(nextSelection[0], nextSelection[1])
-        return { ...prev, swapSelection: [] }
-      }
-      return { ...prev, swapSelection: nextSelection }
-    })
-  }
-
-  const handleMiniBoardClick = (cell: BoardCell) => {
-    if (!placementState || !miniBoardState) return
-    if (miniBoardState.mode === 'placement') {
-      if (!placementState.selectedUnitId) return
-      if (!currentPlacementTargets.includes(cell)) return
-      handlePlaceUnit(placementState.selectedUnitId, cell)
-      setMiniBoardState(null)
-      return
-    }
-    const occupant = boardMap.get(cell)
-    if (!occupant || occupant.owner !== miniBoardState.player) return
-    const hadOne = placementState.swapSelection.length === 1
-    handleSwapSelection(occupant.id)
-    if (hadOne) {
-      setMiniBoardState(null)
-    }
-  }
-
-  const cancelMiniBoard = () => {
-    setMiniBoardState((state) => {
-      if (state?.mode === 'placement') {
-        setPlacementState((prev) => (prev ? { ...prev, selectedUnitId: undefined } : prev))
-      } else if (state?.mode === 'swap') {
-        setPlacementState((prev) => (prev ? { ...prev, swapSelection: [] } : prev))
-      }
-      return null
-    })
-    playAudio('cancel')
-  }
-
-  /**
-   * 次アクション選択モーダルでラジオを選んだ時に呼ばれる。
-   * 一時的に actionSelection に保持し、モーダル確定時に nextActions へ反映する。
-   */
-  const handleActionSelection = (player: PlayerId, value: ActionType) => {
-    setActionSelection({ player, value })
-    playAudio('radio')
-  }
-
-  /**
-   * 次アクション選択モーダルの「決定」ボタン。
-   * 選択内容があれば energy を消費し、nextActionsへ確定値をセットする。
-   */
-  const confirmAction = () => {
-    if (!actionSelection) return
-    const { player, value } = actionSelection
-    const cost = actionCosts[value]
-    if (players[player].energy < cost) {
-      playAudio('cancel')
-      return
-    }
-    if (cost > 0) {
-      decreaseEnergy(player, cost)
-    }
-    const updated = {
-      A: player === 'A' ? value : nextActions.A,
-      B: player === 'B' ? value : nextActions.B,
-    }
-    console.debug('confirmAction nextActions update', updated)
-    setNextActions(updated)
-    setActionSelection(null)
-    playAudio('button')
-  }
-
   const resetGame = () => {
-    setPlayers(createInitialPlayers())
-    setUnits([])
-    setUnitCounter(0)
+    resetUnitState()
+    resetMovementState()
+    resetActionPlan()
     setStep(1)
     setLeadingPlayer('A')
-    setNextActions({ A: null, B: null })
-    setCreationRequest(null)
-    setCreationSelection({})
-    setMovementState(null)
-    setPlacementState(null)
-    setActionSelection(null)
-    setMiniBoardState(null)
     setNameStage('names')
     setNameLocks({ A: false, B: false })
     setNameDrafts({ A: 'プレイヤーA', B: 'プレイヤーB' })
     setInitiativeChoice('A')
-    setVictor(null)
   }
 
   return {
@@ -510,8 +114,8 @@ export const useGameState = () => {
     remainingByClass,
     activePlacementUnits,
     currentPlacementTargets,
-    activeMovementUnits,
     creationRemaining,
+    activeMovementUnits,
     setPlayers,
     setUnits,
     setStep,
@@ -538,6 +142,7 @@ export const useGameState = () => {
     cancelMiniBoard,
     handleSwapSelection,
     placementSelectionHandler,
+    toggleSwapMode,
     goToNextStep,
     resetGame,
   }

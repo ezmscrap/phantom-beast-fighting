@@ -1,5 +1,4 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import { baseDisplayNames, classDisplayNames, stepDescriptions } from './constants'
 import type { ActionType, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
 import type { DiceVisual } from './components/DiceRollerOverlay'
@@ -11,7 +10,8 @@ import { ActionSelectionModal } from './components/modals/ActionSelectionModal'
 import { PlayerSetupModal } from './components/modals/PlayerSetupModal'
 import { DiceTray } from './components/board/DiceTray'
 import { GameBoard } from './components/board/GameBoard'
-import { useGameState, createUnitLabel } from './state/gameState'
+import { PlayerSidebar } from './components/sidebar/PlayerSidebar'
+import { useGameState } from './state/gameState'
 import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
 import { appConfig, resolvePresetDice } from './config'
@@ -465,99 +465,23 @@ function App() {
             onMoveUnit={handleMoveUnit}
           />
         </section>
-        <aside className="sidebar">
-          {(['A', 'B'] as PlayerId[]).map((playerId) => {
-            const isActive = activeStepPlayer === playerId
-            return (
-              <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
-                <header>
-                  <h2>
-                    {players[playerId].name} <small>{playerId === leadingPlayer ? '（先行）' : ''}</small>
-                  </h2>
-                </header>
-                <div className="energy-track">
-                  {[3, 2, 1].map((threshold, index) => (
-                    <span key={threshold} className={`token ${players[playerId].energy >= threshold ? 'lit' : ''}`} aria-label={`T${3 - index}`} />
-                  ))}
-                  <p>エネルギー: {players[playerId].energy}</p>
-                </div>
-                <div className="class-counts">
-                  {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
-                    <div key={role} className="count-row">
-                      <span>{classDisplayNames[role]}</span>
-                      <strong>{remainingByClass[playerId]?.[role] ?? 0}</strong>
-                    </div>
-                  ))}
-                </div>
-                {isCreationStep ? (
-                  <div className="card-counts">
-                    <p>ユニット作成用カード</p>
-                    <ul>
-                      {(Object.keys(baseDisplayNames) as (keyof typeof baseDisplayNames)[]).map((base) => (
-                        <li key={base}>
-                          {baseDisplayNames[base]}: {players[playerId].baseCards[base]}
-                        </li>
-                      ))}
-                    </ul>
-                    <ul>
-                      {(Object.keys(classDisplayNames) as (keyof typeof classDisplayNames)[]).map((role) => (
-                        <li key={role}>
-                          {classDisplayNames[role]}: {players[playerId].classCards[role]}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {isEnergySelectionStep ? (
-                  <button
-                    disabled={actionSelection?.player === playerId}
-                    onClick={() => {
-                      playAudio('button')
-                      handleActionSelection(playerId, 'standard')
-                    }}
-                  >
-                    次アクション選択
-                  </button>
-                ) : null}
-              </section>
-            )
-          })}
-          <section className="procedure-panel">
-            <h2>現在の手順</h2>
-            <p>
-              手順{step}: {stepDescriptions[step]}
-            </p>
-            <p>対象プレイヤー: {players[activeStepPlayer].name}</p>
-            <div className="procedure-actions">{renderProcedureControls()}</div>
-            <button
-              disabled={!canProceed}
-              onClick={() => {
-                playAudio('button')
-                goToNextStep()
-              }}
-            >
-              手順完了
-            </button>
-          </section>
-          {movementState ? (
-            <section className="movement-panel">
-              <h3>兵種別移動可能数</h3>
-              <ul>
-                <li>剣士: {movementState.budget.swordsman}</li>
-                <li>魔術師: {movementState.budget.mage}</li>
-                <li>策士: {movementState.budget.tactician}</li>
-              </ul>
-              <p>{players[movementState.player].name}の移動を完了してください。</p>
-              <div className="unit-selection">
-                {activeMovementUnits.map((unit) => (
-                  <button key={unit.id} onClick={() => handleSelectUnitForMovement(unit)}>
-                    {createUnitLabel(unit)}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
-        </aside>
+        <PlayerSidebar
+          players={players}
+          leadingPlayer={leadingPlayer}
+          activePlayer={activeStepPlayer}
+          step={step}
+          remainingByClass={remainingByClass}
+          actionSelection={actionSelection}
+          onActionSelect={(player) => handleActionSelection(player, 'standard')}
+          renderProcedureControls={renderProcedureControls}
+          canProceed={canProceed}
+          onCompleteStep={goToNextStep}
+          isCreationStep={isCreationStep}
+          isEnergySelectionStep={isEnergySelectionStep}
+          movementState={movementState}
+          activeMovementUnits={activeMovementUnits}
+          onSelectUnitForMovement={handleSelectUnitForMovement}
+        />
       </main>
 
       {showNextActionsDebug ? <div className="debug-next-actions">{debugNextActions}</div> : null}
