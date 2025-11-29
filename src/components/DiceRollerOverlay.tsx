@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GOLD_FACES, SILVER_FACES } from '../constants'
 import type { ClassType, DiceType, MovementBudget, DebugDiceSettings } from '../types'
-import type { BeastLabel } from '../diceFaces'
-import { DiceEngine, buildNotation, type DiceRollPlan, type RollResultEntry } from '../lib/diceEngine'
-import { playAudio } from '../audio'
-
-export interface DiceVisual {
-  id: string
-  type: DiceType
-  faceIndex?: number
-  result?: ClassType
-  label?: BeastLabel
-}
+import type { RollResultEntry } from '../lib/diceEngine'
+import { DiceRollStage } from './dice/DiceRollStage'
+import { DiceResultsSummary } from './dice/DiceResultsSummary'
+import type { DiceVisual } from './dice/types'
 
 interface DiceRollerOverlayProps {
   dice: DiceVisual[]
@@ -28,11 +21,6 @@ const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
   gold: GOLD_FACES,
 }
 
-const DICE_LABEL: Record<DiceType, string> = {
-  silver: '銀',
-  gold: '金',
-}
-
 const createEmptyTallies = (): MovementBudget => ({ swordsman: 0, mage: 0, tactician: 0 })
 
 const applyTallies = (dice: DiceVisual[]): MovementBudget =>
@@ -42,9 +30,6 @@ const applyTallies = (dice: DiceVisual[]): MovementBudget =>
     }
     return acc
   }, createEmptyTallies())
-
-const createOutcomeValues = (count: number) =>
-  Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1)
 
 export const DiceRollerOverlay = ({
   dice,
@@ -59,10 +44,7 @@ export const DiceRollerOverlay = ({
   const [settled, setSettled] = useState(false)
   const [resultsDispatched, setResultsDispatched] = useState(false)
   const sessionStartRef = useRef<number>(Date.now())
-  const engineRef = useRef<DiceEngine | null>(null)
   const diceSnapshotRef = useRef<DiceVisual[]>(dice.map((die) => ({ ...die })))
-  const containerId = useMemo(() => `dice-box-stage-${Math.random().toString(36).slice(2, 9)}`, [])
-  const stageRef = useRef<HTMLDivElement | null>(null)
   const previousSessionIdRef = useRef<string>(rollSessionId)
   const resultsDispatchedRef = useRef(false)
 
@@ -108,63 +90,17 @@ export const DiceRollerOverlay = ({
     resultsDispatchedRef.current = resultsDispatched
   }, [resultsDispatched])
 
-  useEffect(
-    () => () => {
-      engineRef.current?.dispose()
-      engineRef.current = null
-    },
-    [],
+  const stageDice = useMemo(
+    () => diceSnapshotRef.current.map((die) => ({ id: die.id, type: die.type })),
+    [rollSessionId],
   )
 
-  const ensureEngine = useCallback(() => {
-    if (!stageRef.current) return null
-    if (!engineRef.current) {
-      engineRef.current = new DiceEngine(stageRef.current, debugSettings)
-    }
-    return engineRef.current
-  }, [debugSettings])
-
-  useEffect(() => {
-    if (!visible) {
-      engineRef.current?.cancelRoll()
-      return
-    }
-    const sourceDice = diceSnapshotRef.current
-    if (!sourceDice.length) {
-      finalizeResults([])
-      return
-    }
-    const values = createOutcomeValues(sourceDice.length)
-    let cancelled = false
-
-    const startRoll = async () => {
-      const engine = ensureEngine()
-      if (!engine) return
-      const plan: DiceRollPlan[] = sourceDice.map((die, index) => ({
-        id: die.id,
-        type: die.type,
-        targetValue: values[index],
-      }))
-      const notation = buildNotation(plan)
-      try {
-        const result = await engine.roll(plan, { notation, debugSettings })
-        if (!cancelled) {
-          finalizeResults(result.dice)
-        }
-      } catch (error) {
-        if (!cancelled && (error as Error | undefined)?.message !== 'Roll cancelled') {
-          console.error('Dice roll failed', error)
-        }
-      }
-    }
-
-    startRoll()
-
-    return () => {
-      cancelled = true
-      engineRef.current?.cancelRoll()
-    }
-  }, [visible, rollSessionId, ensureEngine, finalizeResults, debugSettings])
+  const handleRollResults = useCallback(
+    (results: RollResultEntry[]) => {
+      finalizeResults(results)
+    },
+    [finalizeResults],
+  )
 
   useEffect(() => {
     if (!settled) return
@@ -182,37 +118,20 @@ export const DiceRollerOverlay = ({
 
   return (
     <>
-      <div className="dice-overlay" aria-hidden="true">
-        <div className="dice-stage">
-          <div id={containerId} ref={stageRef} className="dice-stage__canvas-container" />
-        </div>
-      </div>
-      <div className="dice-overlay__summary">
-        {numericMode ? (
-          <div className="dice-results-list">
-            {dice.map((die) => (
-              <p key={die.id}>
-                {DICE_LABEL[die.type]}: {die.faceIndex != null ? die.faceIndex + 1 : '---'}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
-        )}
-        {settled ? (
-          <button
-            className="primary"
-            onClick={() => {
-              playAudio('button')
-              onClose()
-            }}
-          >
-            結果を適用する
-          </button>
-        ) : (
-          <p>ロール中...</p>
-        )}
-      </div>
+      <DiceRollStage
+        dice={stageDice}
+        rollSessionId={rollSessionId}
+        visible={visible}
+        debugSettings={debugSettings}
+        onRollResult={handleRollResults}
+      />
+      <DiceResultsSummary
+        dice={dice}
+        tallies={tallies}
+        numericMode={numericMode}
+        settled={settled}
+        onClose={onClose}
+      />
     </>
   )
 }

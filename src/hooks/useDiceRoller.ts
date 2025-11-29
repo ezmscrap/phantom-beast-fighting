@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 import { appConfig } from '../config'
 import { playAudio } from '../audio'
 import type { DebugDiceSettings, DiceType, MovementBudget } from '../types'
-import type { DiceVisual } from '../components/DiceRollerOverlay'
+import type { DiceVisual } from '../components/dice/types'
 
 interface DiceOverlayState {
   dice: DiceVisual[]

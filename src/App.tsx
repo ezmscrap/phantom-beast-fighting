@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ActionType, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
-import type { DiceVisual } from './components/DiceRollerOverlay'
+import type { DiceVisual } from './components/dice/types'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
 import { UnitCreationModal } from './components/modals/UnitCreationModal'
 import { UnitPlacementModal } from './components/modals/UnitPlacementModal'
