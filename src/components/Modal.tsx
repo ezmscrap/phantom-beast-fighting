@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
+import { playAudio } from '../audio'
 
 interface ModalProps {
   title: string
@@ -14,6 +15,7 @@ export const Modal = ({ title, isOpen, onClose, children, footer }: ModalProps) 
   const handleOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!onClose) return
     if (event.target === event.currentTarget) {
+      playAudio('button')
       onClose()
     }
   }
@@ -24,7 +26,14 @@ export const Modal = ({ title, isOpen, onClose, children, footer }: ModalProps) 
         <header>
           <h2>{title}</h2>
           {onClose ? (
-            <button className="ghost" onClick={onClose} aria-label="閉じる">
+            <button
+              className="ghost"
+              onClick={() => {
+                playAudio('button')
+                onClose()
+              }}
+              aria-label="閉じる"
+            >
               ×
             </button>
           ) : null}

@@ -1,6 +1,7 @@
 import { Modal } from '../Modal'
 import { baseDisplayNames, classDisplayNames, columns, rows } from '../../constants'
 import type { BoardCell, MiniBoardState, PlacementState, Unit } from '../../types'
+import { playAudio } from '../../audio'
 
 interface MiniBoardModalProps {
   miniBoardState: MiniBoardState | null
@@ -25,7 +26,13 @@ export const MiniBoardModal = ({
     onClose={onCancel}
     footer={
       <div className="modal-actions">
-        <button className="ghost" onClick={onCancel}>
+        <button
+          className="ghost"
+          onClick={() => {
+            playAudio('button')
+            onCancel()
+          }}
+        >
           キャンセル
         </button>
       </div>
@@ -57,7 +64,10 @@ export const MiniBoardModal = ({
                     key={cell}
                     className={`mini-cell ${selectable ? 'highlight' : ''} ${swapChosen ? 'swap-selected' : ''}`}
                     disabled={!selectable}
-                    onClick={() => onCellClick(cell)}
+                    onClick={() => {
+                      playAudio('button')
+                      onCellClick(cell)
+                    }}
                   >
                     {occupant ? (
                       <span className={`mini-piece mini-piece--${occupant.owner}`}>

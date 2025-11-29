@@ -1,5 +1,6 @@
 import { Modal } from '../Modal'
 import { baseDisplayNames, classDisplayNames } from '../../constants'
+import { playAudio } from '../../audio'
 import type {
   BaseType,
   ClassType,
@@ -39,10 +40,22 @@ export const UnitCreationModal = ({
     footer={
       request ? (
         <div className="modal-actions">
-          <button disabled={!selection.base || !selection.role} onClick={onConfirm}>
+          <button
+            disabled={!selection.base || !selection.role}
+            onClick={() => {
+              playAudio('button')
+              onConfirm()
+            }}
+          >
             作成する
           </button>
-          <button className="ghost" onClick={onCancel}>
+          <button
+            className="ghost"
+            onClick={() => {
+              playAudio('button')
+              onCancel()
+            }}
+          >
             キャンセル
           </button>
         </div>
@@ -58,7 +71,10 @@ export const UnitCreationModal = ({
               key={base}
               disabled={players[request.player].baseCards[base] <= 0}
               className={selection.base === base ? 'selected' : ''}
-              onClick={() => onSelectBase(base)}
+              onClick={() => {
+                playAudio('button')
+                onSelectBase(base)
+              }}
             >
               {baseDisplayNames[base]} ({players[request.player].baseCards[base]})
             </button>
@@ -70,7 +86,10 @@ export const UnitCreationModal = ({
               key={role}
               disabled={players[request.player].classCards[role] <= 0}
               className={selection.role === role ? 'selected' : ''}
-              onClick={() => onSelectRole(role)}
+              onClick={() => {
+                playAudio('button')
+                onSelectRole(role)
+              }}
             >
               {classDisplayNames[role]} ({players[request.player].classCards[role]})
             </button>

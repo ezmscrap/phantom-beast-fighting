@@ -1,5 +1,6 @@
 import { Modal } from '../Modal'
 import type { DiceRedistributionState } from '../../types'
+import { playAudio } from '../../audio'
 
 interface DiceRedistributionModalProps {
   state: DiceRedistributionState | null
@@ -17,8 +18,21 @@ export const DiceRedistributionModal = ({ state, choice, onSelect, onConfirm, on
     footer={
       state ? (
         <div className="modal-actions">
-          <button onClick={onConfirm}>決定</button>
-          <button className="ghost" onClick={onCancel}>
+          <button
+            onClick={() => {
+              playAudio('button')
+              onConfirm()
+            }}
+          >
+            決定
+          </button>
+          <button
+            className="ghost"
+            onClick={() => {
+              playAudio('button')
+              onCancel()
+            }}
+          >
             キャンセル
           </button>
         </div>

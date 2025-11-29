@@ -1,5 +1,6 @@
 import { Modal } from '../Modal'
 import type { ActionSelectionState, ActionType, PlayerId, PlayerState } from '../../types'
+import { playAudio } from '../../audio'
 
 interface ActionSelectionModalProps {
   selection: ActionSelectionState | null
@@ -27,8 +28,21 @@ export const ActionSelectionModal = ({ selection, players, onSelect, onConfirm, 
     onClose={onCancel}
     footer={
       <div className="modal-actions">
-        <button onClick={onConfirm}>決定</button>
-        <button className="ghost" onClick={onCancel}>
+        <button
+          onClick={() => {
+            playAudio('button')
+            onConfirm()
+          }}
+        >
+          決定
+        </button>
+        <button
+          className="ghost"
+          onClick={() => {
+            playAudio('button')
+            onCancel()
+          }}
+        >
           キャンセル
         </button>
       </div>

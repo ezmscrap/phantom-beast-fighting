@@ -3,6 +3,7 @@ import { GOLD_FACES, SILVER_FACES } from '../constants'
 import type { ClassType, DiceType, MovementBudget, DebugDiceSettings } from '../types'
 import type { BeastLabel } from '../diceFaces'
 import { DiceEngine, buildNotation, type DiceRollPlan, type RollResultEntry } from '../lib/diceEngine'
+import { playAudio } from '../audio'
 
 export interface DiceVisual {
   id: string
@@ -199,7 +200,13 @@ export const DiceRollerOverlay = ({
           <p>剣士: {tallies.swordsman} / 魔術師: {tallies.mage} / 策士: {tallies.tactician}</p>
         )}
         {settled ? (
-          <button className="primary" onClick={onClose}>
+          <button
+            className="primary"
+            onClick={() => {
+              playAudio('button')
+              onClose()
+            }}
+          >
             結果を適用する
           </button>
         ) : (

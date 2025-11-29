@@ -1,5 +1,6 @@
 import { Modal } from '../Modal'
 import { baseDisplayNames, classDisplayNames } from '../../constants'
+import { playAudio } from '../../audio'
 import type {
   MiniBoardState,
   PlacementState,
@@ -44,7 +45,10 @@ export const UnitPlacementModal = ({
             return (
               <button
                 className="ghost"
-                onClick={() => onRequestCreation(placementState.player, tag as ProcedureStep)}
+                onClick={() => {
+                  playAudio('button')
+                  onRequestCreation(placementState.player, tag as ProcedureStep)
+                }}
               >
                 新しくユニットを作成する
               </button>
@@ -55,6 +59,7 @@ export const UnitPlacementModal = ({
               <button
                 className="ghost"
                 onClick={() => {
+                  playAudio('button')
                   onClose()
                 }}
               >
@@ -71,16 +76,28 @@ export const UnitPlacementModal = ({
               {placementState.swapMode ? (
                 <>
                   <p>入れ替えたい配置済みユニットを2体選択してください。</p>
-                  <button onClick={() => onOpenMiniBoard({ mode: 'swap', player: placementState.player })}>
+                  <button
+                    onClick={() => {
+                      playAudio('button')
+                      onOpenMiniBoard({ mode: 'swap', player: placementState.player })
+                    }}
+                  >
                     ミニ配置面を開く
                   </button>
-                  <button className="ghost" onClick={() => onToggleSwap(false)}>
+                  <button
+                    className="ghost"
+                    onClick={() => {
+                      playAudio('button')
+                      onToggleSwap(false)
+                    }}
+                  >
                     入れ替えを中止
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => {
+                    playAudio('button')
                     onToggleSwap(true)
                     onOpenMiniBoard({ mode: 'swap', player: placementState.player })
                   }}
@@ -91,7 +108,13 @@ export const UnitPlacementModal = ({
             </>
           ) : (
             activePlacementUnits.map((unit) => (
-              <button key={unit.id} onClick={() => onSelectUnit(unit.id)}>
+              <button
+                key={unit.id}
+                onClick={() => {
+                  playAudio('button')
+                  onSelectUnit(unit.id)
+                }}
+              >
                 {baseDisplayNames[unit.base]}
                 {classDisplayNames[unit.role]}
               </button>

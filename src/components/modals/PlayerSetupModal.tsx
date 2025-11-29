@@ -1,5 +1,6 @@
 import { Modal } from '../Modal'
 import type { PlayerId } from '../../types'
+import { playAudio } from '../../audio'
 
 type Stage = 'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'
 
@@ -44,13 +45,26 @@ export const PlayerSetupModal = ({
                   onChange={(event) => onDraftChange(id, event.target.value)}
                 />
               </label>
-              <button disabled={nameLocks[id]} onClick={() => onLockName(id)}>
+              <button
+                disabled={nameLocks[id]}
+                onClick={() => {
+                  playAudio('button')
+                  onLockName(id)
+                }}
+              >
                 決定
               </button>
             </div>
           ))}
           {readyForConfirmation ? (
-            <button onClick={() => onChangeStage('confirmNames')}>この名前で確認</button>
+            <button
+              onClick={() => {
+                playAudio('button')
+                onChangeStage('confirmNames')
+              }}
+            >
+              この名前で確認
+            </button>
           ) : null}
         </div>
       )}
@@ -61,8 +75,22 @@ export const PlayerSetupModal = ({
             A: {nameDrafts.A} / B: {nameDrafts.B} でよいですか？
           </p>
           <div className="modal-actions">
-            <button onClick={() => onChangeStage('initiative')}>確認</button>
-            <button onClick={() => onChangeStage('names')}>戻る</button>
+            <button
+              onClick={() => {
+                playAudio('button')
+                onChangeStage('initiative')
+              }}
+            >
+              確認
+            </button>
+            <button
+              onClick={() => {
+                playAudio('button')
+                onChangeStage('names')
+              }}
+            >
+              戻る
+            </button>
           </div>
         </div>
       )}
@@ -76,7 +104,14 @@ export const PlayerSetupModal = ({
               {nameDrafts[id]}
             </label>
           ))}
-          <button onClick={() => onChangeStage('confirmInitiative')}>先行決定</button>
+          <button
+            onClick={() => {
+              playAudio('button')
+              onChangeStage('confirmInitiative')
+            }}
+          >
+            先行決定
+          </button>
         </div>
       )}
 
@@ -84,8 +119,22 @@ export const PlayerSetupModal = ({
         <div>
           <p>{nameDrafts[initiativeChoice]}を先行にします。よろしいですか？</p>
           <div className="modal-actions">
-            <button onClick={onConfirmInitiative}>確認</button>
-            <button onClick={() => onChangeStage('initiative')}>戻る</button>
+            <button
+              onClick={() => {
+                playAudio('button')
+                onConfirmInitiative()
+              }}
+            >
+              確認
+            </button>
+            <button
+              onClick={() => {
+                playAudio('button')
+                onChangeStage('initiative')
+              }}
+            >
+              戻る
+            </button>
           </div>
         </div>
       )}

@@ -16,6 +16,7 @@ import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
 import { appConfig, resolvePresetDice } from './config'
 import { getActivePlayerForStep, getStepActionInfo, canAdvanceStep, executeAction, startDiceRoll } from './logic/actions'
+import { playAudio } from './audio'
 
 const DiceRollerOverlay = lazy(async () => {
   const module = await import('./components/DiceRollerOverlay')
@@ -120,6 +121,7 @@ function App() {
 
   const openPlacementModal = useCallback(
     (player: PlayerId) => {
+      playAudio('button')
       setPlacementState({ player, swapMode: false, swapSelection: [] })
     },
     [setPlacementState],
@@ -139,6 +141,7 @@ function App() {
   )
 
   const confirmDiceResult = () => {
+    playAudio('button')
     closeOverlay()
     setMovementState((state) => {
       if (!state) return state
@@ -253,6 +256,7 @@ function App() {
             <>
               <button
                 onClick={() => {
+                  playAudio('button')
                   setCreationRequest({ player: activeStepPlayer, step })
                   setCreationSelection({})
                 }}
@@ -285,7 +289,12 @@ function App() {
           <>
             <p>エネルギー0のため通常アクションになります。</p>
             {nextActions[player] !== 'standard' ? (
-              <button onClick={() => setNextActions((prev) => ({ ...prev, [player]: 'standard' }))}>
+              <button
+                onClick={() => {
+                  playAudio('button')
+                  setNextActions((prev) => ({ ...prev, [player]: 'standard' }))
+                }}
+              >
                 通常アクションで進む
               </button>
             ) : null}
@@ -295,7 +304,12 @@ function App() {
       return (
         <>
           <p>次アクションをラジオボタンで決定してください。</p>
-          <button onClick={() => handleActionSelection(player, nextActions[player] ?? 'standard')}>
+          <button
+            onClick={() => {
+              playAudio('button')
+              handleActionSelection(player, nextActions[player] ?? 'standard')
+            }}
+          >
             選択モーダルを開く
           </button>
         </>
@@ -310,7 +324,14 @@ function App() {
       return (
         <>
           <p>{actionInfo.label}を実行します。</p>
-          <button onClick={() => handleExecuteAction(step)}>ダイスを使用して開始</button>
+          <button
+            onClick={() => {
+              playAudio('button')
+              handleExecuteAction(step)
+            }}
+          >
+            ダイスを使用して開始
+          </button>
         </>
       )
     }
@@ -349,6 +370,7 @@ function App() {
   )
 
   const handleDebugRoll = useCallback(() => {
+    playAudio('button')
     const diceTypes = resolvePresetDice(appConfig.diceDebug.preset)
     startDiceRoll({
       player: leadingPlayer,
@@ -364,6 +386,7 @@ function App() {
   }, [leadingPlayer, launchRoll])
 
   const handleResetGame = () => {
+    playAudio('button')
     resetGame()
     resetDiceState()
     closeOverlay()
@@ -485,7 +508,13 @@ function App() {
                   </div>
                 ) : null}
                 {isEnergySelectionStep ? (
-                  <button disabled={actionSelection?.player === playerId} onClick={() => handleActionSelection(playerId, 'standard')}>
+                  <button
+                    disabled={actionSelection?.player === playerId}
+                    onClick={() => {
+                      playAudio('button')
+                      handleActionSelection(playerId, 'standard')
+                    }}
+                  >
                     次アクション選択
                   </button>
                 ) : null}
@@ -499,7 +528,13 @@ function App() {
             </p>
             <p>対象プレイヤー: {players[activeStepPlayer].name}</p>
             <div className="procedure-actions">{renderProcedureControls()}</div>
-            <button disabled={!canProceed} onClick={goToNextStep}>
+            <button
+              disabled={!canProceed}
+              onClick={() => {
+                playAudio('button')
+                goToNextStep()
+              }}
+            >
               手順完了
             </button>
           </section>
