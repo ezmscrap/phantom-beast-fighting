@@ -99,3 +99,7 @@ PR / Issue は歓迎します。仕様上ファンアートであることをご
 
 ---
 © 2025 いずむ(@ezmscrap). Fan implementation of「幻獣闘技」。
+
+## ライセンス
+
+本リポジトリは [MIT License](./LICENSE) で配布されています。
