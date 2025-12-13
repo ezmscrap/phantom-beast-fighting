@@ -14,7 +14,7 @@ import { playAudio } from '../../audio'
 import { buildBoardMap } from '../../logic/movement'
 import { createInitialPlayers, opponentOf } from './helpers'
 
-const creationRequirements: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 3, 4: 2, 5: 2 }
+const creationRequirements: Record<2 | 3 | 4, number> = { 2: 3, 3: 5, 4: 2 }
 
 export const useUnitLogic = () => {
   const [players, setPlayers] = useState(createInitialPlayers)
@@ -51,22 +51,22 @@ export const useUnitLogic = () => {
   }, [units])
 
   const creationProgress = useMemo(() => {
-    const base = { 2: 0, 3: 0, 4: 0, 5: 0 }
+    const base: Record<2 | 3 | 4, number> = { 2: 0, 3: 0, 4: 0 }
     return units.reduce((acc, unit) => {
-      if (unit.createdAtStep && acc[unit.createdAtStep as 2 | 3 | 4 | 5] !== undefined) {
-        acc[unit.createdAtStep as 2 | 3 | 4 | 5] += 1
+      if (unit.createdAtStep && acc[unit.createdAtStep as 2 | 3 | 4] !== undefined) {
+        acc[unit.createdAtStep as 2 | 3 | 4] += 1
       }
       return acc
     }, { ...base })
   }, [units])
 
   const creationRemaining = useMemo(() => {
-    const steps: Array<2 | 3 | 4 | 5> = [2, 3, 4, 5]
+    const steps: Array<2 | 3 | 4> = [2, 3, 4]
     return steps.reduce((acc, stepKey) => {
       const required = creationRequirements[stepKey]
       acc[stepKey] = Math.max(0, required - creationProgress[stepKey])
       return acc
-    }, { ...creationRequirements } as Record<2 | 3 | 4 | 5, number>)
+    }, { ...creationRequirements })
   }, [creationProgress])
 
   const activePlacementUnits = useMemo(() => {

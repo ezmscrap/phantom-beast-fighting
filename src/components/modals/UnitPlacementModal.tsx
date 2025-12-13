@@ -18,7 +18,7 @@ interface UnitPlacementModalProps {
   onToggleSwap: (enabled: boolean) => void
   onOpenMiniBoard: (state: MiniBoardState) => void
   onClose: () => void
-  creationRemaining: Record<2 | 3 | 4 | 5, number>
+  creationRemaining: Record<2 | 3 | 4, number>
   onRequestCreation: (player: PlayerId, step: ProcedureStep) => void
 }
 
@@ -40,7 +40,7 @@ export const UnitPlacementModal = ({
         {(() => {
           const tag = placementState.stepTag
           const canCreateMore =
-            tag && tag >= 2 && tag <= 5 && creationRemaining[tag as 2 | 3 | 4 | 5] > 0
+            tag && tag >= 2 && tag <= 4 && creationRemaining[tag as 2 | 3 | 4] > 0
           if (canCreateMore) {
             return (
               <button

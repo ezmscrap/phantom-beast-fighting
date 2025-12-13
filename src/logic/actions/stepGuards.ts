@@ -12,7 +12,7 @@ interface CanAdvanceParams {
   step: ProcedureStep
   diceRedistribution: DiceRedistributionState | null
   placementState: PlacementState | null
-  pendingCreations: Record<number, number>
+  pendingCreations: Record<2 | 3 | 4, number>
   pendingPlacementCount: number
   dicePlacementStage: DicePlacementStage
   movementState: MovementState | null
@@ -32,12 +32,8 @@ export const canAdvanceStep = ({
   activeStepPlayer,
 }: CanAdvanceParams) => {
   if (step === 1 || diceRedistribution) return false
-  if (step >= 2 && step <= 5) {
-    return (
-      placementState === null &&
-      pendingCreations[step as 2 | 3 | 4 | 5] === 0 &&
-      pendingPlacementCount === 0
-    )
+  if ([2, 3, 4].includes(step)) {
+    return placementState === null && pendingCreations[step as 2 | 3 | 4] === 0 && pendingPlacementCount === 0
   }
   if (step === 6) {
     return dicePlacementStage === 3

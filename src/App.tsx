@@ -186,12 +186,17 @@ function App() {
   )
 
   useEffect(() => {
-    if (step < 2 || step > 5) return
-    const remaining = creationRemaining[step as 2 | 3 | 4 | 5]
+    if (![2, 3, 4].includes(step)) return
+    const remaining = creationRemaining[step as 2 | 3 | 4]
     if (remaining === 0 && pendingPlacementCount === 0) {
       goToNextStep()
     }
   }, [step, creationRemaining, pendingPlacementCount, goToNextStep])
+
+  useEffect(() => {
+    if (step !== 5) return
+    goToNextStep()
+  }, [step, goToNextStep])
 
   /**
    * 作戦手順(8,9,10,13,14,15)の開始時に、選択されたアクションと一致しなければスキップする。
@@ -237,7 +242,7 @@ function App() {
     }
   }, [step, movementState, diceOverlay, activeStepPlayer, victor, goToNextStep])
 
-  const isCreationStep = step >= 2 && step <= 5
+  const isCreationStep = [2, 3, 4].includes(step)
   const isEnergySelectionStep = step === 7 || step === 12
   const isDicePlacementStep = step === 6
 
@@ -245,8 +250,8 @@ function App() {
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
     }
-    if (step >= 2 && step <= 5) {
-      const remaining = creationRemaining[step as 2 | 3 | 4 | 5]
+    if ([2, 3, 4].includes(step)) {
+      const remaining = creationRemaining[step as 2 | 3 | 4]
       const hasPlacementCandidates = pendingPlacementCount > 0
       return (
         <>
@@ -363,7 +368,7 @@ function App() {
 
   const handleOpenCreationRequest = useCallback(
     (player: PlayerId, stepTag: ProcedureStep) => {
-      if (![2, 3, 4, 5].includes(stepTag)) return
+      if (![2, 3, 4].includes(stepTag)) return
       setCreationRequest({ player, step: stepTag })
       setCreationSelection({})
     },
