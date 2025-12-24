@@ -51,6 +51,16 @@ export const GameBoard = ({
               swapSelectable &&
               placementState?.swapSelection.includes(occupant?.id ?? '')
 
+            const isMovementSource =
+              Boolean(
+                movementState &&
+                  occupant &&
+                  !movementState.selectedUnitId &&
+                  occupant.owner === movementState.player &&
+                  movementState.budget[occupant.role] > 0 &&
+                  !movementState.movedUnitIds.includes(occupant.id),
+              )
+
             const handleCellClick = () => {
               if (interactionLocked) return
               if (placementState?.swapMode) {
@@ -77,7 +87,7 @@ export const GameBoard = ({
             return (
               <button
                 key={cell}
-                className={`board-cell ${highlight ? 'highlight' : ''} ${swapSelectable ? 'swap-selectable' : ''} ${swapSelected ? 'swap-selected' : ''}`}
+                className={`board-cell ${highlight ? 'highlight' : ''} ${swapSelectable ? 'swap-selectable' : ''} ${swapSelected ? 'swap-selected' : ''} ${isMovementSource ? 'movement-source' : ''}`}
                 onClick={handleCellClick}
               >
                 {renderPiece(occupant)}

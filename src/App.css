@@ -81,6 +81,11 @@ header h1 {
   box-shadow: 0 0 15px rgba(108, 243, 255, 0.6);
 }
 
+.board-cell.movement-source {
+  border-color: rgba(255, 206, 108, 0.85);
+  box-shadow: 0 0 14px rgba(255, 206, 108, 0.55);
+}
+
 .board-cell.swap-selectable {
   border-color: rgba(246, 177, 61, 0.8);
   box-shadow: 0 0 12px rgba(246, 177, 61, 0.4);
@@ -384,6 +389,19 @@ header h1 {
 .movement-panel li {
   display: flex;
   justify-content: space-between;
+}
+
+.movement-panel--highlight {
+  border: 1px solid rgba(255, 206, 108, 0.8);
+  background: rgba(255, 206, 108, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 0 18px rgba(255, 206, 108, 0.35);
+}
+
+.movement-panel--highlight .unit-selection button {
+  border-color: rgba(255, 206, 108, 0.7);
+  box-shadow: 0 0 10px rgba(255, 206, 108, 0.35);
 }
 
 .unit-placement-modal,

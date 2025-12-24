@@ -77,10 +77,28 @@ export const PlayerSidebar = ({
 
   return (
     <aside className="sidebar">
-      {(['A', 'B'] as PlayerId[]).map((playerId) => {
-        const isActive = activePlayer === playerId
-        return (
-          <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
+    {movementState ? (
+      <section className="movement-panel movement-panel--highlight">
+        <h3>兵種別移動可能数</h3>
+        <ul>
+          <li>剣士: {movementState.budget.swordsman}</li>
+          <li>魔術師: {movementState.budget.mage}</li>
+          <li>策士: {movementState.budget.tactician}</li>
+        </ul>
+        <p>{players[movementState.player].name}の移動を完了してください。</p>
+        <div className="unit-selection">
+          {activeMovementUnits.map((unit) => (
+            <button key={unit.id} onClick={() => onSelectUnitForMovement(unit)}>
+              {createUnitLabel(unit)}
+            </button>
+          ))}
+        </div>
+      </section>
+    ) : null}
+    {(['A', 'B'] as PlayerId[]).map((playerId) => {
+      const isActive = activePlayer === playerId
+      return (
+        <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
           <header>
             <h2>
               {players[playerId].name} <small>{playerId === leadingPlayer ? '（先行）' : ''}</small>
@@ -210,24 +228,6 @@ export const PlayerSidebar = ({
         </>
       )}
     </section>
-    {movementState ? (
-      <section className="movement-panel">
-        <h3>兵種別移動可能数</h3>
-        <ul>
-          <li>剣士: {movementState.budget.swordsman}</li>
-          <li>魔術師: {movementState.budget.mage}</li>
-          <li>策士: {movementState.budget.tactician}</li>
-        </ul>
-        <p>{players[movementState.player].name}の移動を完了してください。</p>
-        <div className="unit-selection">
-          {activeMovementUnits.map((unit) => (
-            <button key={unit.id} onClick={() => onSelectUnitForMovement(unit)}>
-              {createUnitLabel(unit)}
-            </button>
-          ))}
-        </div>
-      </section>
-    ) : null}
     </aside>
   )
 }
