@@ -5,9 +5,11 @@ import { computeLegalMoves } from '../../logic/movement'
 import type {
   BoardCell,
   ClassType,
+  GameLogEntry,
   MovementBudget,
   MovementState,
   PlayerId,
+  ProcedureStep,
   Unit,
 } from '../../types'
 import { collectDeployedUnitIds } from './utils'
@@ -33,8 +35,10 @@ interface MovementLogicOptions {
   setUnits: React.Dispatch<React.SetStateAction<Unit[]>>
   boardMap: Map<BoardCell, Unit>
   increaseEnergy: (player: PlayerId, amount?: number) => void
-  handleRemoveUnit: (unit: Unit) => void
+  handleRemoveUnit: (unit: Unit, causedBy: PlayerId) => void
   setNextActions: React.Dispatch<React.SetStateAction<Record<PlayerId, MovementState['action'] | null>>>
+  queueLog?: (entry: Omit<GameLogEntry, 'id' | 'timestamp' | 'beforeState' | 'afterState'>) => void
+  getCurrentStep?: () => ProcedureStep
 }
 
 export const useMovementLogic = ({
@@ -44,8 +48,18 @@ export const useMovementLogic = ({
   increaseEnergy,
   handleRemoveUnit,
   setNextActions,
+  queueLog,
+  getCurrentStep,
 }: MovementLogicOptions) => {
   const [movementState, setMovementState] = useState<MovementState | null>(null)
+
+  const logAction = useCallback(
+    (meta: Omit<GameLogEntry, 'id' | 'timestamp' | 'beforeState' | 'afterState' | 'step'>) => {
+      const stepValue = getCurrentStep?.() ?? 1
+      queueLog?.({ ...meta, step: stepValue })
+    },
+    [queueLog, getCurrentStep],
+  )
 
   const isRoleMovementComplete = useCallback(
     (state: MovementState, role: ClassType, movedIds?: string[]) => {
@@ -122,6 +136,7 @@ export const useMovementLogic = ({
       const legal = movementState.destinations.includes(cell)
       if (!legal) return
       const occupant = boardMap.get(cell)
+      logAction({ actor: movementState.player, action: 'moveUnit', detail: `${movingUnit.id}:${movingUnit.position ?? ''}->${cell}` })
       setUnits((prev) =>
         prev.map((unit) => {
           if (unit.id === movingUnit.id) {
@@ -143,7 +158,7 @@ export const useMovementLogic = ({
         increaseEnergy(movingUnit.owner)
       }
       if (occupant && occupant.owner !== movingUnit.owner) {
-        handleRemoveUnit(occupant)
+        handleRemoveUnit(occupant, movingUnit.owner)
         playAudio(classAttackAudio[movingUnit.role])
       }
       const nextMoveCount = movementState.moveCount + 1

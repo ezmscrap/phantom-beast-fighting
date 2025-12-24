@@ -77,6 +77,15 @@ function App() {
     resetGame,
     swapRestrictionWarning,
     dismissSwapRestrictionWarning,
+    logs,
+    downloadLogs,
+    handleLogUpload,
+    canReplay,
+    handleReplayLogs,
+    uploadLogsAndReplay,
+    isLogPanelCollapsed,
+    toggleLogPanel,
+    isLogReplaying,
   } = useGameState()
 
   const {
@@ -491,10 +500,18 @@ function App() {
           onCompleteStep={goToNextStep}
           isCreationStep={isCreationStep}
           isEnergySelectionStep={isEnergySelectionStep}
-          movementState={movementState}
-          activeMovementUnits={activeMovementUnits}
-          onSelectUnitForMovement={handleSelectUnitForMovement}
-        />
+        movementState={movementState}
+        activeMovementUnits={activeMovementUnits}
+        onSelectUnitForMovement={handleSelectUnitForMovement}
+        logs={logs}
+        onDownloadLogs={downloadLogs}
+        onUploadLogs={handleLogUpload}
+        canReplayLogs={canReplay}
+        onReplayLogs={handleReplayLogs}
+        logPanelCollapsed={isLogPanelCollapsed}
+        onToggleLogPanel={toggleLogPanel}
+        isReplayingLogs={isLogReplaying}
+      />
       </main>
 
       {showNextActionsDebug ? <div className="debug-next-actions">{debugNextActions}</div> : null}
@@ -517,6 +534,7 @@ function App() {
           setLeadingPlayer(initiativeChoice)
           setStep(2)
         }}
+        onUploadAndReplayLogs={uploadLogsAndReplay}
       />
 
       <ActionSelectionModal
@@ -605,6 +623,15 @@ function App() {
                 : 'すべての敵剣士を無力化した'}
           </p>
           <button onClick={handleResetGame}>再度ゲームを開始</button>
+          <button
+            className="ghost"
+            onClick={() => {
+              playAudio('button')
+              downloadLogs()
+            }}
+          >
+            今回の闘技のログをダウンロード
+          </button>
         </div>
       ) : null}
     </div>

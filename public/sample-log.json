@@ -1,0 +1,192 @@
+[
+  {
+    "id": "log-sample-1",
+    "step": 2,
+    "actor": "A",
+    "action": "createUnit",
+    "detail": "dragon/mage",
+    "target": "unit-A-1",
+    "timestamp": "2025-01-01T00:00:00.000Z",
+    "beforeState": {
+      "step": 2,
+      "leadingPlayer": "A",
+      "players": {
+        "A": {
+          "id": "A",
+          "name": "プレイヤーA",
+          "color": "white",
+          "energy": 0,
+          "baseCards": { "dragon": 1, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 2, "swordsman": 2 }
+        },
+        "B": {
+          "id": "B",
+          "name": "プレイヤーB",
+          "color": "black",
+          "energy": 0,
+          "baseCards": { "dragon": 1, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 2, "swordsman": 2 }
+        }
+      },
+      "units": [],
+      "unitCounter": 0,
+      "placementState": { "player": "A", "swapMode": false, "swapSelection": [], "stepTag": 2 },
+      "creationRequest": null,
+      "creationSelection": {},
+      "miniBoardState": null,
+      "movementState": null,
+      "actionSelection": null,
+      "nextActions": { "A": null, "B": null },
+      "nameStage": "names",
+      "nameDrafts": { "A": "プレイヤーA", "B": "プレイヤーB" },
+      "nameLocks": { "A": false, "B": false },
+      "initiativeChoice": "A",
+      "victor": null
+    },
+    "afterState": {
+      "step": 2,
+      "leadingPlayer": "A",
+      "players": {
+        "A": {
+          "id": "A",
+          "name": "プレイヤーA",
+          "color": "white",
+          "energy": 0,
+          "baseCards": { "dragon": 0, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 1, "swordsman": 2 }
+        },
+        "B": {
+          "id": "B",
+          "name": "プレイヤーB",
+          "color": "black",
+          "energy": 0,
+          "baseCards": { "dragon": 1, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 2, "swordsman": 2 }
+        }
+      },
+      "units": [
+        {
+          "id": "unit-A-1",
+          "owner": "A",
+          "base": "dragon",
+          "role": "mage",
+          "status": "preDeployment",
+          "createdAtStep": 2
+        }
+      ],
+      "unitCounter": 1,
+      "placementState": { "player": "A", "swapMode": false, "swapSelection": [], "stepTag": 2 },
+      "creationRequest": null,
+      "creationSelection": {},
+      "miniBoardState": null,
+      "movementState": null,
+      "actionSelection": null,
+      "nextActions": { "A": null, "B": null },
+      "nameStage": "names",
+      "nameDrafts": { "A": "プレイヤーA", "B": "プレイヤーB" },
+      "nameLocks": { "A": false, "B": false },
+      "initiativeChoice": "A",
+      "victor": null
+    }
+  },
+  {
+    "id": "log-sample-2",
+    "step": 2,
+    "actor": "A",
+    "action": "placeUnit",
+    "detail": "A2",
+    "target": "unit-A-1",
+    "timestamp": "2025-01-01T00:00:03.000Z",
+    "beforeState": {
+      "step": 2,
+      "leadingPlayer": "A",
+      "players": {
+        "A": {
+          "id": "A",
+          "name": "プレイヤーA",
+          "color": "white",
+          "energy": 0,
+          "baseCards": { "dragon": 0, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 1, "swordsman": 2 }
+        },
+        "B": {
+          "id": "B",
+          "name": "プレイヤーB",
+          "color": "black",
+          "energy": 0,
+          "baseCards": { "dragon": 1, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 2, "swordsman": 2 }
+        }
+      },
+      "units": [
+        {
+          "id": "unit-A-1",
+          "owner": "A",
+          "base": "dragon",
+          "role": "mage",
+          "status": "preDeployment",
+          "createdAtStep": 2
+        }
+      ],
+      "unitCounter": 1,
+      "placementState": { "player": "A", "swapMode": false, "swapSelection": [], "stepTag": 2 },
+      "creationRequest": null,
+      "creationSelection": {},
+      "miniBoardState": null,
+      "movementState": null,
+      "actionSelection": null,
+      "nextActions": { "A": null, "B": null },
+      "nameStage": "names",
+      "nameDrafts": { "A": "プレイヤーA", "B": "プレイヤーB" },
+      "nameLocks": { "A": false, "B": false },
+      "initiativeChoice": "A",
+      "victor": null
+    },
+    "afterState": {
+      "step": 2,
+      "leadingPlayer": "A",
+      "players": {
+        "A": {
+          "id": "A",
+          "name": "プレイヤーA",
+          "color": "white",
+          "energy": 0,
+          "baseCards": { "dragon": 0, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 1, "swordsman": 2 }
+        },
+        "B": {
+          "id": "B",
+          "name": "プレイヤーB",
+          "color": "black",
+          "energy": 0,
+          "baseCards": { "dragon": 1, "griffin": 2, "unicorn": 2 },
+          "classCards": { "tactician": 1, "mage": 2, "swordsman": 2 }
+        }
+      },
+      "units": [
+        {
+          "id": "unit-A-1",
+          "owner": "A",
+          "base": "dragon",
+          "role": "mage",
+          "status": "tentative",
+          "position": "A2",
+          "createdAtStep": 2
+        }
+      ],
+      "unitCounter": 1,
+      "placementState": { "player": "A", "swapMode": false, "swapSelection": [], "stepTag": 2 },
+      "creationRequest": null,
+      "creationSelection": {},
+      "miniBoardState": null,
+      "movementState": null,
+      "actionSelection": null,
+      "nextActions": { "A": null, "B": null },
+      "nameStage": "names",
+      "nameDrafts": { "A": "プレイヤーA", "B": "プレイヤーB" },
+      "nameLocks": { "A": false, "B": false },
+      "initiativeChoice": "A",
+      "victor": null
+    }
+  }
+]

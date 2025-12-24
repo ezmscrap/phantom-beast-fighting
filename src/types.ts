@@ -106,6 +106,38 @@ export interface MiniBoardState {
 
 export type NextActions = Record<PlayerId, ActionType | null>
 
+export interface GameSnapshot {
+  step: ProcedureStep
+  leadingPlayer: PlayerId
+  players: Record<PlayerId, PlayerState>
+  units: Unit[]
+  unitCounter: number
+  placementState: PlacementState | null
+  creationRequest: { player: PlayerId; step: ProcedureStep } | null
+  creationSelection: { base?: BaseType; role?: ClassType }
+  miniBoardState: MiniBoardState | null
+  movementState: MovementState | null
+  actionSelection: ActionSelectionState | null
+  nextActions: NextActions
+  nameStage: 'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'
+  nameDrafts: Record<PlayerId, string>
+  nameLocks: Record<PlayerId, boolean>
+  initiativeChoice: PlayerId
+  victor: { player: PlayerId; reason: ClassType } | null
+}
+
+export interface GameLogEntry {
+  id: string
+  step: ProcedureStep
+  actor: PlayerId | 'system'
+  action: string
+  detail?: string
+  target?: string
+  beforeState: GameSnapshot
+  afterState: GameSnapshot
+  timestamp: string
+}
+
 export interface DiceRollResult {
   faces: ClassType[]
   tallies: MovementBudget

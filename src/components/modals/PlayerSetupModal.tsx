@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Modal } from '../Modal'
 import type { PlayerId } from '../../types'
 import { playAudio } from '../../audio'
@@ -15,6 +16,7 @@ interface PlayerSetupModalProps {
   onChangeStage: (stage: Stage) => void
   onSelectInitiative: (player: PlayerId) => void
   onConfirmInitiative: () => void
+  onUploadAndReplayLogs: (file: File) => Promise<void>
 }
 
 export const PlayerSetupModal = ({
@@ -28,8 +30,10 @@ export const PlayerSetupModal = ({
   onChangeStage,
   onSelectInitiative,
   onConfirmInitiative,
+  onUploadAndReplayLogs,
 }: PlayerSetupModalProps) => {
   const readyForConfirmation = nameLocks.A && nameLocks.B
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   return (
     <Modal title="プレイヤー設定" isOpen={isOpen}>
@@ -138,6 +142,29 @@ export const PlayerSetupModal = ({
           </div>
         </div>
       )}
+      <div className="modal-actions">
+        <button
+          className="ghost"
+          onClick={() => {
+            playAudio('button')
+            fileInputRef.current?.click()
+          }}
+        >
+          ログをアップロードして再生
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json"
+          style={{ display: 'none' }}
+          onChange={async (event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            await onUploadAndReplayLogs(file)
+            event.target.value = ''
+          }}
+        />
+      </div>
     </Modal>
   )
 }

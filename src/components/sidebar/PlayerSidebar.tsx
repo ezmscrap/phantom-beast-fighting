@@ -1,6 +1,15 @@
 import { classDisplayNames, baseDisplayNames, stepDescriptions } from '../../constants'
-import type { ActionSelectionState, MovementState, PlayerId, PlayerState, ProcedureStep, Unit, MovementBudget } from '../../types'
-import type { ReactNode } from 'react'
+import type {
+  ActionSelectionState,
+  GameLogEntry,
+  MovementBudget,
+  MovementState,
+  PlayerId,
+  PlayerState,
+  ProcedureStep,
+  Unit,
+} from '../../types'
+import type { ChangeEvent, ReactNode } from 'react'
 import { playAudio } from '../../audio'
 import { createUnitLabel } from '../../state/gameState'
 
@@ -20,6 +29,14 @@ export interface PlayerSidebarProps {
   movementState: MovementState | null
   activeMovementUnits: Unit[]
   onSelectUnitForMovement: (unit: Unit) => void
+  logs: GameLogEntry[]
+  onDownloadLogs: () => void
+  onUploadLogs: (file: File) => void
+  canReplayLogs: boolean
+  onReplayLogs: () => void
+  logPanelCollapsed: boolean
+  onToggleLogPanel: () => void
+  isReplayingLogs: boolean
 }
 
 export const PlayerSidebar = ({
@@ -38,12 +55,32 @@ export const PlayerSidebar = ({
   movementState,
   activeMovementUnits,
   onSelectUnitForMovement,
-}: PlayerSidebarProps) => (
-  <aside className="sidebar">
-    {(['A', 'B'] as PlayerId[]).map((playerId) => {
-      const isActive = activePlayer === playerId
-      return (
-        <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
+  logs,
+  onDownloadLogs,
+  onUploadLogs,
+  canReplayLogs,
+  onReplayLogs,
+  logPanelCollapsed,
+  onToggleLogPanel,
+  isReplayingLogs,
+}: PlayerSidebarProps) => {
+  const handleLogFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      playAudio('button')
+      onUploadLogs(file)
+    }
+    event.target.value = ''
+  }
+
+  const formatTimestamp = (value: string) => new Date(value).toLocaleString('ja-JP')
+
+  return (
+    <aside className="sidebar">
+      {(['A', 'B'] as PlayerId[]).map((playerId) => {
+        const isActive = activePlayer === playerId
+        return (
+          <section key={playerId} className={`player-panel ${isActive ? 'is-active' : ''}`}>
           <header>
             <h2>
               {players[playerId].name} <small>{playerId === leadingPlayer ? '（先行）' : ''}</small>
@@ -113,6 +150,66 @@ export const PlayerSidebar = ({
         手順完了
       </button>
     </section>
+    <section className={`log-panel ${logPanelCollapsed ? 'is-collapsed' : ''}`}>
+      <header className="log-panel__header">
+        <h3>操作ログ</h3>
+        <button
+          className="ghost"
+          onClick={() => {
+            playAudio('button')
+            onToggleLogPanel()
+          }}
+        >
+          {logPanelCollapsed ? '展開' : '最小化'}
+        </button>
+      </header>
+      {logPanelCollapsed ? null : (
+        <>
+          <div className="log-panel__list">
+            {logs.length === 0 ? (
+              <p className="log-panel__empty">まだログはありません。</p>
+            ) : (
+              logs.map((entry) => (
+                <div key={entry.id} className="log-entry">
+                  <div className="log-entry__meta">
+                    <span>手順{entry.step}</span>
+                    <span>{formatTimestamp(entry.timestamp)}</span>
+                  </div>
+                  <p>
+                    <strong>{entry.actor}</strong>:{' '}
+                    <span>{entry.action}</span>
+                    {entry.detail ? `（${entry.detail}）` : ''}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="log-panel__actions">
+            <button
+              onClick={() => {
+                playAudio('button')
+                onDownloadLogs()
+              }}
+            >
+              ログのダウンロード
+            </button>
+            <label className="log-upload-button">
+              <input type="file" accept="application/json" onChange={handleLogFile} />
+              <span>ログのアップロード</span>
+            </label>
+            <button
+              disabled={!canReplayLogs || isReplayingLogs}
+              onClick={() => {
+                playAudio('button')
+                onReplayLogs()
+              }}
+            >
+              {isReplayingLogs ? '再生中…' : 'ログを再生'}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
     {movementState ? (
       <section className="movement-panel">
         <h3>兵種別移動可能数</h3>
@@ -131,5 +228,6 @@ export const PlayerSidebar = ({
         </div>
       </section>
     ) : null}
-  </aside>
-)
+    </aside>
+  )
+}

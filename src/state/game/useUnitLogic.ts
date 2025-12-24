@@ -4,6 +4,7 @@ import type {
   BaseType,
   BoardCell,
   ClassType,
+  GameLogEntry,
   MiniBoardState,
   PlacementState,
   PlayerId,
@@ -16,7 +17,14 @@ import { createInitialPlayers, opponentOf } from './helpers'
 
 const creationRequirements: Record<2 | 3 | 4, number> = { 2: 3, 3: 5, 4: 2 }
 
-export const useUnitLogic = () => {
+type LogMeta = Omit<GameLogEntry, 'id' | 'timestamp' | 'beforeState' | 'afterState'>
+
+interface UnitLogicOptions {
+  queueLog?: (entry: LogMeta) => void
+  getCurrentStep?: () => ProcedureStep
+}
+
+export const useUnitLogic = (options?: UnitLogicOptions) => {
   const [players, setPlayers] = useState(createInitialPlayers)
   const [units, setUnits] = useState<Unit[]>([])
   const [unitCounter, setUnitCounter] = useState(0)
@@ -86,6 +94,14 @@ export const useUnitLogic = () => {
       })
   }, [placementState, boardMap])
 
+  const logAction = useCallback(
+    (meta: Omit<LogMeta, 'step'>) => {
+      const stepValue = options?.getCurrentStep?.() ?? placementState?.stepTag ?? 1
+      options?.queueLog?.({ ...meta, step: stepValue })
+    },
+    [options, placementState?.stepTag],
+  )
+
   const increaseEnergy = useCallback((player: PlayerId, amount = 1) => {
     setPlayers((prev) => ({
       ...prev,
@@ -125,9 +141,10 @@ export const useUnitLogic = () => {
         },
       }))
       setPlacementState({ player, swapMode: false, swapSelection: [], stepTag })
+      logAction({ actor: player, action: 'createUnit', detail: `${base}/${role}`, target: newUnit.id })
       playAudio('button')
     },
-    [players, unitCounter],
+    [players, unitCounter, logAction],
   )
 
   const handlePlaceUnit = useCallback((unitId: string, cell: BoardCell) => {
@@ -148,8 +165,9 @@ export const useUnitLogic = () => {
         swapSelection: [],
       }
     })
+    logAction({ actor: placementState?.player ?? 'system', action: 'placeUnit', detail: cell, target: unitId })
     playAudio('unitPlace')
-  }, [])
+  }, [placementState?.player, logAction])
 
   const handleSwapUnits = useCallback(
     (firstId: string, secondId: string) => {
@@ -169,9 +187,10 @@ export const useUnitLogic = () => {
       )
       setPlacementState((prev) => (prev ? { ...prev, swapMode: false, swapSelection: [] } : prev))
       setMiniBoardState((state) => (state?.mode === 'swap' ? null : state))
+      logAction({ actor: placementState?.player ?? 'system', action: 'swapUnits', detail: `${firstId}<->${secondId}` })
       playAudio('unitPlace')
     },
-    [units],
+    [units, placementState?.player, logAction],
   )
 
   const handleSwapSelection = useCallback(
@@ -243,7 +262,7 @@ export const useUnitLogic = () => {
   }, [])
 
   const handleRemoveUnit = useCallback(
-    (unit: Unit) => {
+    (unit: Unit, causedBy: PlayerId) => {
       setUnits((prev) => {
         const next = prev.map((item) =>
           item.id === unit.id ? { ...item, status: 'removed' as const, position: undefined } : item,
@@ -260,9 +279,10 @@ export const useUnitLogic = () => {
         }
         return next
       })
+      logAction({ actor: causedBy, action: 'removeUnit', target: unit.id })
       increaseEnergy(unit.owner)
     },
-    [increaseEnergy],
+    [increaseEnergy, logAction],
   )
 
   const toggleSwapMode = useCallback((enabled: boolean) => {
@@ -295,6 +315,8 @@ export const useUnitLogic = () => {
     setPlayers,
     units,
     setUnits,
+    unitCounter,
+    setUnitCounter,
     placementState,
     setPlacementState,
     creationRequest,
