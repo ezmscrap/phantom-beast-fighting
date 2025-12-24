@@ -36,6 +36,7 @@ export const useGameState = () => {
   })
   const snapshotRef = useRef<GameSnapshot | null>(null)
   const pendingLogsRef = useRef<PendingLog[]>([])
+  const appliedLogIdsRef = useRef<Set<string>>(new Set())
   const prevLogCountRef = useRef(0)
 
   const {
@@ -328,14 +329,24 @@ export const useGameState = () => {
   )
 
   const handleReplayLogs = useCallback(
-    async (entries?: GameLogEntry[]) => {
+    async (entries?: GameLogEntry[], skipSnapshot?: boolean) => {
       const source = entries ?? uploadedLogs
       if (!source.length) return
-      const firstSnapshot = source[0]?.beforeState
-      if (firstSnapshot) {
-        applySnapshot(firstSnapshot)
+      const listToApply = source.filter((entry) => {
+        if (appliedLogIdsRef.current.has(entry.id)) {
+          return false
+        }
+        appliedLogIdsRef.current.add(entry.id)
+        return true
+      })
+      if (listToApply.length === 0) return
+      if (!skipSnapshot) {
+        const firstSnapshot = listToApply[0]?.beforeState
+        if (firstSnapshot) {
+          applySnapshot(firstSnapshot)
+        }
       }
-      await replayFromLogs(applySnapshot, source)
+      await replayFromLogs(applySnapshot, listToApply)
     },
     [applySnapshot, replayFromLogs, uploadedLogs],
   )
@@ -350,14 +361,14 @@ export const useGameState = () => {
       if (firstSnapshot) {
         applySnapshot(firstSnapshot)
       }
-      await handleReplayLogs(entries)
+      await handleReplayLogs(entries, true)
     },
     [handleLogUpload, handleReplayLogs, applySnapshot],
   )
 
   useEffect(() => {
     setLogHandler((entries) => {
-      handleReplayLogs(entries)
+      handleReplayLogs(entries, true)
     })
   }, [handleReplayLogs, setLogHandler])
 
