@@ -634,6 +634,12 @@ function App() {
           </button>
         </div>
       ) : null}
+
+      {isLogReplaying ? (
+        <div className="log-replay-overlay">
+          <div className="log-replay-overlay__content">ログの再生中</div>
+        </div>
+      ) : null}
     </div>
   )
 }

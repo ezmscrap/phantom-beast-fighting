@@ -319,6 +319,25 @@ header h1 {
   font-size: 0.85rem;
 }
 
+.log-replay-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: all;
+  background: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 3rem;
+  z-index: 200;
+}
+
+.log-replay-overlay__content {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffe7c2;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
 .movement-panel ul {
   list-style: none;
   padding: 0;
