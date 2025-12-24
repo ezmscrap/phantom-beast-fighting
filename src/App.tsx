@@ -132,7 +132,8 @@ function App() {
     [units, activeStepPlayer],
   )
   const interactionsLocked =
-    matchMode === 'spectator' || (matchMode === 'online' && onlineRole ? onlineRole !== localPlayerId : false)
+    matchMode === 'spectator' ||
+    (matchMode === 'online' && localPlayerId !== activeStepPlayer)
 
   const canProceed =
     step === 0
