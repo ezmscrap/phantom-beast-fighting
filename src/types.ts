@@ -125,6 +125,9 @@ export interface GameSnapshot {
   nameLocks: Record<PlayerId, boolean>
   initiativeChoice: PlayerId
   victor: { player: PlayerId; reason: ClassType } | null
+  diceSlots: DiceSlotState[]
+  dicePlacementStage: DicePlacementStage
+  diceRedistribution: DiceRedistributionState | null
 }
 
 export interface GameLogEntry {

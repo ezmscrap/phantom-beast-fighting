@@ -82,6 +82,7 @@ export const useDiceState = () => {
     setRedistributionChoice,
     setDiceRedistribution,
     setDiceSlots,
+    setDicePlacementStage,
     placeDie,
     gatherDiceTypes,
     completeRedistribution,

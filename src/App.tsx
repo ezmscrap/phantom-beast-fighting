@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import type { ActionType, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
+import type { ActionType, BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
 import type { DiceVisual } from './components/dice/types'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
@@ -13,7 +13,6 @@ import { GameBoard } from './components/board/GameBoard'
 import { Modal } from './components/Modal'
 import { PlayerSidebar } from './components/sidebar/PlayerSidebar'
 import { useGameState } from './state/gameState'
-import { useDiceState } from './state/diceState'
 import { useDiceRoller } from './hooks/useDiceRoller'
 import { appConfig, resolvePresetDice } from './config'
 import { getActivePlayerForStep, getStepActionInfo, canAdvanceStep, executeAction, startDiceRoll } from './logic/actions'
@@ -92,14 +91,12 @@ function App() {
     userName,
     setUserName,
     peerInfo,
+    localPlayerId,
     startLocalMatch,
     startSpectatorMode,
     startOnlineMatch,
     connectMatchPeer,
     confirmLeadingPlayer,
-  } = useGameState()
-
-  const {
     diceSlots,
     dicePlacementStage,
     diceRedistribution,
@@ -110,8 +107,7 @@ function App() {
     placeDie,
     gatherDiceTypes,
     completeRedistribution,
-    resetDiceState,
-  } = useDiceState()
+  } = useGameState()
 
   const {
     overlay: diceOverlay,
@@ -135,7 +131,8 @@ function App() {
     () => units.filter((unit) => unit.owner === activeStepPlayer && unit.status === 'tentative').length,
     [units, activeStepPlayer],
   )
-  const interactionsLocked = matchMode === 'spectator'
+  const interactionsLocked =
+    matchMode === 'spectator' || (matchMode === 'online' && onlineRole ? onlineRole !== localPlayerId : false)
 
   const canProceed =
     step === 0
@@ -405,19 +402,45 @@ function App() {
   }
 
   const handleCreationConfirm = () => {
+    if (interactionsLocked) return
     if (!creationRequest || !creationSelection.base || !creationSelection.role) return
     handleCreateUnit(creationRequest.player, creationSelection.base, creationSelection.role, creationRequest.step)
     setCreationRequest(null)
     setCreationSelection({})
   }
 
+  const safePlacementSelection = useCallback(
+    (unitId: string) => {
+      if (interactionsLocked) return
+      placementSelectionHandler(unitId)
+    },
+    [interactionsLocked, placementSelectionHandler],
+  )
+
+  const safeSwapSelection = useCallback(
+    (unitId: string) => {
+      if (interactionsLocked) return
+      handleSwapSelection(unitId)
+    },
+    [interactionsLocked, handleSwapSelection],
+  )
+
+  const safeMiniBoardClick = useCallback(
+    (cell: BoardCell) => {
+      if (interactionsLocked) return
+      handleMiniBoardClick(cell)
+    },
+    [interactionsLocked, handleMiniBoardClick],
+  )
+
   const handleOpenCreationRequest = useCallback(
     (player: PlayerId, stepTag: ProcedureStep) => {
+      if (interactionsLocked) return
       if (![2, 3, 4].includes(stepTag)) return
       setCreationRequest({ player, step: stepTag })
       setCreationSelection({})
     },
-    [setCreationRequest],
+    [setCreationRequest, interactionsLocked],
   )
 
   const handleDebugRoll = useCallback(() => {
@@ -439,7 +462,6 @@ function App() {
   const handleResetGame = () => {
     playAudio('button')
     resetGame()
-    resetDiceState()
     closeOverlay()
   }
 
@@ -520,7 +542,7 @@ function App() {
         boardMap={boardMap}
         movementState={movementState}
         placementState={placementState}
-        onSwapSelection={handleSwapSelection}
+        onSwapSelection={safeSwapSelection}
         onSelectUnitForMovement={handleSelectUnitForMovement}
         onMoveUnit={handleMoveUnit}
         interactionLocked={interactionsLocked}
@@ -600,12 +622,13 @@ function App() {
         placementState={placementState}
         players={players}
         activePlacementUnits={activePlacementUnits}
-        onSelectUnit={placementSelectionHandler}
+        onSelectUnit={safePlacementSelection}
         onToggleSwap={toggleSwapMode}
         onOpenMiniBoard={(state) => setMiniBoardState(state)}
         onClose={() => setPlacementState(null)}
         creationRemaining={creationRemaining}
         onRequestCreation={handleOpenCreationRequest}
+        interactionLocked={interactionsLocked}
       />
 
       <MiniBoardModal
@@ -613,7 +636,7 @@ function App() {
         placementState={placementState}
         boardMap={boardMap}
         currentPlacementTargets={currentPlacementTargets}
-        onCellClick={handleMiniBoardClick}
+        onCellClick={safeMiniBoardClick}
         onCancel={cancelMiniBoard}
       />
 

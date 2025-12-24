@@ -20,6 +20,7 @@ interface UnitPlacementModalProps {
   onClose: () => void
   creationRemaining: Record<2 | 3 | 4, number>
   onRequestCreation: (player: PlayerId, step: ProcedureStep) => void
+  interactionLocked?: boolean
 }
 
 export const UnitPlacementModal = ({
@@ -32,6 +33,7 @@ export const UnitPlacementModal = ({
   onClose,
   creationRemaining,
   onRequestCreation,
+  interactionLocked = false,
 }: UnitPlacementModalProps) => (
   <Modal title="ユニット配置" isOpen={Boolean(placementState)} onClose={onClose}>
     {placementState ? (
@@ -45,6 +47,7 @@ export const UnitPlacementModal = ({
             return (
               <button
                 className="ghost"
+                disabled={interactionLocked}
                 onClick={() => {
                   playAudio('button')
                   onRequestCreation(placementState.player, tag as ProcedureStep)
@@ -77,6 +80,7 @@ export const UnitPlacementModal = ({
                 <>
                   <p>入れ替えたい配置済みユニットを2体選択してください。</p>
                   <button
+                    disabled={interactionLocked}
                     onClick={() => {
                       playAudio('button')
                       onOpenMiniBoard({ mode: 'swap', player: placementState.player })
@@ -86,6 +90,7 @@ export const UnitPlacementModal = ({
                   </button>
                   <button
                     className="ghost"
+                    disabled={interactionLocked}
                     onClick={() => {
                       playAudio('button')
                       onToggleSwap(false)
@@ -96,6 +101,7 @@ export const UnitPlacementModal = ({
                 </>
               ) : (
                 <button
+                  disabled={interactionLocked}
                   onClick={() => {
                     playAudio('button')
                     onToggleSwap(true)
@@ -110,6 +116,7 @@ export const UnitPlacementModal = ({
             activePlacementUnits.map((unit) => (
               <button
                 key={unit.id}
+                disabled={interactionLocked}
                 onClick={() => {
                   playAudio('button')
                   onSelectUnit(unit.id)

@@ -8,6 +8,7 @@ import type {
   ProcedureStep,
 } from '../types'
 import { useUnitLogic } from './game/useUnitLogic'
+import { useDiceState } from './diceState'
 import { useMovementLogic } from './game/useMovementLogic'
 import { useActionPlanLogic } from './game/useActionPlanLogic'
 import { useGameLog } from './game/useGameLog'
@@ -30,6 +31,7 @@ export const useGameState = () => {
   const [matchMode, setMatchMode] = useState<MatchMode | null>(null)
   const [userName, setUserName] = useState('プレイヤーA')
   const [onlineRole, setOnlineRole] = useState<PlayerId | null>(null)
+  const [localPlayerId, setLocalPlayerId] = useState<PlayerId>('A')
   const [peerState, setPeerState] = useState<{ id: string | null; status: ConnectionStatus }>({
     id: null,
     status: 'idle',
@@ -123,6 +125,21 @@ export const useGameState = () => {
   } = useUnitLogic({ queueLog, getCurrentStep })
 
   const {
+    diceSlots,
+    dicePlacementStage,
+    diceRedistribution,
+    redistributionChoice,
+    setRedistributionChoice,
+    setDiceRedistribution,
+    setDiceSlots,
+    setDicePlacementStage,
+    placeDie,
+    gatherDiceTypes,
+    completeRedistribution,
+    resetDiceState,
+  } = useDiceState()
+
+  const {
     actionSelection,
     setActionSelection,
     nextActions,
@@ -185,12 +202,15 @@ export const useGameState = () => {
         movementState,
         actionSelection,
         nextActions,
-        nameStage,
-        nameDrafts,
-        nameLocks,
-        initiativeChoice,
-        victor,
-      }) as GameSnapshot,
+      nameStage,
+      nameDrafts,
+      nameLocks,
+      initiativeChoice,
+      victor,
+      diceSlots,
+      dicePlacementStage,
+      diceRedistribution,
+    }) as GameSnapshot,
     [
       step,
       leadingPlayer,
@@ -209,6 +229,9 @@ export const useGameState = () => {
       nameLocks,
       initiativeChoice,
       victor,
+      diceSlots,
+      dicePlacementStage,
+      diceRedistribution,
     ],
   )
 
@@ -306,6 +329,9 @@ export const useGameState = () => {
       setNameLocks(clone.nameLocks)
       setInitiativeChoice(clone.initiativeChoice)
       setVictor(clone.victor)
+      setDiceSlots(clone.diceSlots)
+      setDicePlacementStage(clone.dicePlacementStage)
+      setDiceRedistribution(clone.diceRedistribution)
     },
     [
       setActionSelection,
@@ -325,6 +351,9 @@ export const useGameState = () => {
       setUnits,
       setUnitCounter,
       setVictor,
+      setDiceSlots,
+      setDicePlacementStage,
+      setDiceRedistribution,
     ],
   )
 
@@ -382,12 +411,14 @@ export const useGameState = () => {
         }))
         setNameDrafts((prev) => ({ ...prev, A: remoteName }))
         setOnlineRole('B')
+        setLocalPlayerId('B')
       } else if (playerRole === 'B') {
         setPlayers((prev) => ({
           ...prev,
           B: { ...prev.B, name: remoteName },
         }))
         setNameDrafts((prev) => ({ ...prev, B: remoteName }))
+        setLocalPlayerId('A')
       }
     })
   }, [setHandshakeHandler, setPlayers, setNameDrafts])
@@ -400,6 +431,7 @@ export const useGameState = () => {
     async (name: string) => {
       setUserName(name)
       setMatchMode('local')
+      setLocalPlayerId('A')
       setPlayers((prev) => ({
         ...prev,
         A: { ...prev.A, name },
@@ -416,6 +448,7 @@ export const useGameState = () => {
     async (name: string) => {
       setUserName(name)
       setMatchMode('spectator')
+      setLocalPlayerId('B')
       await initializePeer()
       setPeerState((prev) => ({ ...prev, status: 'waiting' }))
     },
@@ -426,6 +459,7 @@ export const useGameState = () => {
     async (name: string) => {
       setUserName(name)
       setMatchMode('online')
+      setLocalPlayerId('A')
       setOnlineRole(null)
       setPlayers((prev) => ({
         ...prev,
@@ -446,6 +480,7 @@ export const useGameState = () => {
       await connectToPeer(targetId)
       hostPeerIdRef.current = peerId ?? null
       setOnlineRole('A')
+      setLocalPlayerId('A')
       sendHandshake('online', userName, 'A')
     },
     [connectToPeer, peerId, sendHandshake, userName],
@@ -463,6 +498,7 @@ export const useGameState = () => {
     resetUnitState()
     resetMovementState()
     resetActionPlan()
+    resetDiceState()
     setStep(0)
     setLeadingPlayer('A')
     setNameStage('names')
@@ -473,6 +509,7 @@ export const useGameState = () => {
     setUserName('プレイヤーA')
     setPeerState({ id: null, status: 'idle' })
     setOnlineRole(null)
+    setLocalPlayerId('A')
   }
 
   return {
@@ -535,11 +572,22 @@ export const useGameState = () => {
     userName,
     setUserName,
     peerInfo: peerState,
+    localPlayerId,
     startLocalMatch,
     startSpectatorMode,
     startOnlineMatch,
     connectMatchPeer,
     confirmLeadingPlayer,
+    diceSlots,
+    dicePlacementStage,
+    diceRedistribution,
+    redistributionChoice,
+    setRedistributionChoice,
+    setDiceRedistribution,
+    setDiceSlots,
+    placeDie,
+    gatherDiceTypes,
+    completeRedistribution,
     logs,
     downloadLogs,
     handleLogUpload,
