@@ -13,6 +13,7 @@ interface GameBoardProps {
   onSwapSelection: (unitId: string) => void
   onSelectUnitForMovement: (unit: Unit) => void
   onMoveUnit: (cell: BoardCell) => void
+  interactionLocked?: boolean
 }
 
 const renderPiece = (unit: Unit | undefined) => {
@@ -32,6 +33,7 @@ export const GameBoard = ({
   onSwapSelection,
   onSelectUnitForMovement,
   onMoveUnit,
+  interactionLocked = false,
 }: GameBoardProps) => {
   return (
     <div className="board-grid">
@@ -50,6 +52,7 @@ export const GameBoard = ({
               placementState?.swapSelection.includes(occupant?.id ?? '')
 
             const handleCellClick = () => {
+              if (interactionLocked) return
               if (placementState?.swapMode) {
                 if (swapEligibleOwner && occupant) {
                   onSwapSelection(occupant.id)

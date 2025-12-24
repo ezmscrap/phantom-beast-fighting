@@ -51,6 +51,7 @@ export interface DiceRedistributionState {
 }
 
 export type ProcedureStep =
+  | 0
   | 1
   | 2
   | 3
@@ -137,6 +138,37 @@ export interface GameLogEntry {
   afterState: GameSnapshot
   timestamp: string
 }
+
+export type MatchMode = 'local' | 'online' | 'spectator'
+
+export type ConnectionStatus = 'idle' | 'waiting' | 'connecting' | 'connected'
+
+export interface PeerInfo {
+  id: string | null
+  status: ConnectionStatus
+}
+
+export type TransportPayload =
+  | {
+      kind: 'logSnapshot'
+      logs: GameLogEntry[]
+      messageId: string
+      origin: string
+    }
+  | {
+      kind: 'logAppend'
+      entries: GameLogEntry[]
+      messageId: string
+      origin: string
+    }
+  | {
+      kind: 'handshake'
+      role: MatchMode
+      userName: string
+      playerRole: PlayerId
+      messageId: string
+      origin: string
+    }
 
 export interface DiceRollResult {
   faces: ClassType[]

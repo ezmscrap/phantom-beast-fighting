@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { GameLogEntry, GameSnapshot, PlayerId, ProcedureStep } from '../types'
+import type {
+  ConnectionStatus,
+  GameLogEntry,
+  GameSnapshot,
+  MatchMode,
+  PlayerId,
+  ProcedureStep,
+} from '../types'
 import { useUnitLogic } from './game/useUnitLogic'
 import { useMovementLogic } from './game/useMovementLogic'
 import { useActionPlanLogic } from './game/useActionPlanLogic'
 import { useGameLog } from './game/useGameLog'
 import { deepClone } from '../utils/deepClone'
+import { usePeerTransport } from '../hooks/usePeerTransport'
 export { createUnitLabel } from './game/helpers'
 
 type PendingLog = {
@@ -13,14 +21,22 @@ type PendingLog = {
 }
 
 export const useGameState = () => {
-  const [step, setStep] = useState<ProcedureStep>(1)
+  const [step, setStep] = useState<ProcedureStep>(0)
   const [leadingPlayer, setLeadingPlayer] = useState<PlayerId>('A')
   const [nameStage, setNameStage] = useState<'names' | 'confirmNames' | 'initiative' | 'confirmInitiative'>('names')
   const [nameDrafts, setNameDrafts] = useState({ A: 'プレイヤーA', B: 'プレイヤーB' })
   const [nameLocks, setNameLocks] = useState({ A: false, B: false })
   const [initiativeChoice, setInitiativeChoice] = useState<PlayerId>('A')
+  const [matchMode, setMatchMode] = useState<MatchMode | null>(null)
+  const [userName, setUserName] = useState('プレイヤーA')
+  const [onlineRole, setOnlineRole] = useState<PlayerId | null>(null)
+  const [peerState, setPeerState] = useState<{ id: string | null; status: ConnectionStatus }>({
+    id: null,
+    status: 'idle',
+  })
   const snapshotRef = useRef<GameSnapshot | null>(null)
   const pendingLogsRef = useRef<PendingLog[]>([])
+  const prevLogCountRef = useRef(0)
 
   const {
     logs,
@@ -34,6 +50,17 @@ export const useGameState = () => {
     toggleCollapsed,
     isReplaying,
   } = useGameLog()
+  const {
+    peerId,
+    status: transportStatus,
+    initializePeer,
+    connectToPeer,
+    broadcast,
+    sendHandshake,
+    setLatestLogs,
+    setLogHandler,
+    setHandshakeHandler,
+  } = usePeerTransport()
 
   const pushLogEntry = useCallback(
     (entry: Omit<GameLogEntry, 'id' | 'timestamp'>) => {
@@ -121,6 +148,12 @@ export const useGameState = () => {
     queueLog,
     getCurrentStep,
   })
+
+  const hostPeerIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    setPeerState({ id: peerId ?? null, status: transportStatus })
+  }, [peerId, transportStatus])
 
   const goToNextStep = useCallback(() => {
     queueLog({ step, actor: 'system', action: 'advanceStep', detail: `from ${step}`, target: 'procedure' })
@@ -210,6 +243,48 @@ export const useGameState = () => {
     pushLogEntry,
   ])
 
+  useEffect(() => {
+    if (!matchMode || matchMode === 'spectator') return
+    if (logs.length === 0) return
+    if (prevLogCountRef.current === 0) {
+      broadcast({ logs })
+    } else if (logs.length > prevLogCountRef.current) {
+      const entries = logs.slice(prevLogCountRef.current)
+      broadcast({ entries })
+    }
+    prevLogCountRef.current = logs.length
+  }, [logs, matchMode, broadcast])
+
+  useEffect(() => {
+    if (!matchMode) return
+    if (transportStatus !== 'connected') return
+    if (matchMode === 'online') {
+      if (!onlineRole) return
+      sendHandshake(matchMode, userName, onlineRole)
+    } else {
+      sendHandshake(matchMode, userName, 'A')
+    }
+  }, [matchMode, transportStatus, sendHandshake, userName, onlineRole])
+
+  useEffect(() => {
+    if (matchMode !== 'online') return
+    if (onlineRole === 'B') {
+      setPlayers((prev) => ({
+        ...prev,
+        B: { ...prev.B, name: userName },
+      }))
+      setNameDrafts((prev) => ({ ...prev, B: userName }))
+    }
+  }, [matchMode, onlineRole, setPlayers, setNameDrafts, userName])
+
+  useEffect(() => {
+    if (step !== 0) return
+    if (!matchMode || matchMode === 'local') return
+    if (transportStatus === 'connected') {
+      setStep(1)
+    }
+  }, [step, matchMode, transportStatus])
+
   const applySnapshot = useCallback(
     (state: GameSnapshot) => {
       const clone = deepClone(state)
@@ -280,16 +355,113 @@ export const useGameState = () => {
     [handleLogUpload, handleReplayLogs, applySnapshot],
   )
 
+  useEffect(() => {
+    setLogHandler((entries) => {
+      handleReplayLogs(entries)
+    })
+  }, [handleReplayLogs, setLogHandler])
+
+  useEffect(() => {
+    setHandshakeHandler(({ role, userName: remoteName, playerRole }) => {
+      if (role !== 'online') return
+      if (playerRole === 'A') {
+        setPlayers((prev) => ({
+          ...prev,
+          A: { ...prev.A, name: remoteName },
+        }))
+        setNameDrafts((prev) => ({ ...prev, A: remoteName }))
+        setOnlineRole('B')
+      } else if (playerRole === 'B') {
+        setPlayers((prev) => ({
+          ...prev,
+          B: { ...prev.B, name: remoteName },
+        }))
+        setNameDrafts((prev) => ({ ...prev, B: remoteName }))
+      }
+    })
+  }, [setHandshakeHandler, setPlayers, setNameDrafts])
+
+  useEffect(() => {
+    setLatestLogs(logs)
+  }, [logs, setLatestLogs])
+
+  const startLocalMatch = useCallback(
+    async (name: string) => {
+      setUserName(name)
+      setMatchMode('local')
+      setPlayers((prev) => ({
+        ...prev,
+        A: { ...prev.A, name },
+      }))
+      setNameDrafts((prev) => ({ ...prev, A: name }))
+      await initializePeer()
+      setPeerState((prev) => ({ ...prev, status: 'waiting' }))
+      setStep(1)
+    },
+    [initializePeer, setPlayers],
+  )
+
+  const startSpectatorMode = useCallback(
+    async (name: string) => {
+      setUserName(name)
+      setMatchMode('spectator')
+      await initializePeer()
+      setPeerState((prev) => ({ ...prev, status: 'waiting' }))
+    },
+    [initializePeer],
+  )
+
+  const startOnlineMatch = useCallback(
+    async (name: string) => {
+      setUserName(name)
+      setMatchMode('online')
+      setOnlineRole(null)
+      setPlayers((prev) => ({
+        ...prev,
+        A: { ...prev.A, name },
+        B: { ...prev.B, name: 'プレイヤーB' },
+      }))
+      setNameDrafts((prev) => ({ ...prev, A: name }))
+      await initializePeer()
+      setPeerState((prev) => ({ ...prev, status: 'waiting' }))
+      setNameStage('initiative')
+    },
+    [initializePeer, setPlayers, setNameStage],
+  )
+
+  const connectMatchPeer = useCallback(
+    async (targetId: string) => {
+      if (!targetId) return
+      await connectToPeer(targetId)
+      hostPeerIdRef.current = peerId ?? null
+      setOnlineRole('A')
+      sendHandshake('online', userName, 'A')
+    },
+    [connectToPeer, peerId, sendHandshake, userName],
+  )
+
+  const confirmLeadingPlayer = useCallback(
+    (player: PlayerId) => {
+      queueLog({ step, actor: 'system', action: 'setLeading', detail: player, target: 'initiative' })
+      setLeadingPlayer(player)
+    },
+    [queueLog, step],
+  )
+
   const resetGame = () => {
     resetUnitState()
     resetMovementState()
     resetActionPlan()
-    setStep(1)
+    setStep(0)
     setLeadingPlayer('A')
     setNameStage('names')
     setNameLocks({ A: false, B: false })
     setNameDrafts({ A: 'プレイヤーA', B: 'プレイヤーB' })
     setInitiativeChoice('A')
+    setMatchMode(null)
+    setUserName('プレイヤーA')
+    setPeerState({ id: null, status: 'idle' })
+    setOnlineRole(null)
   }
 
   return {
@@ -346,6 +518,17 @@ export const useGameState = () => {
     resetGame,
     swapRestrictionWarning,
     dismissSwapRestrictionWarning,
+    matchMode,
+    onlineRole,
+    setMatchMode,
+    userName,
+    setUserName,
+    peerInfo: peerState,
+    startLocalMatch,
+    startSpectatorMode,
+    startOnlineMatch,
+    connectMatchPeer,
+    confirmLeadingPlayer,
     logs,
     downloadLogs,
     handleLogUpload,

@@ -19,6 +19,7 @@ import { appConfig, resolvePresetDice } from './config'
 import { getActivePlayerForStep, getStepActionInfo, canAdvanceStep, executeAction, startDiceRoll } from './logic/actions'
 import { playAudio } from './audio'
 import { DiceDebugPanel } from './components/debug/DiceDebugPanel'
+import { MatchSetupModal } from './components/modals/MatchSetupModal'
 
 const DiceRollerOverlay = lazy(async () => {
   const module = await import('./components/DiceRollerOverlay')
@@ -86,6 +87,16 @@ function App() {
     isLogPanelCollapsed,
     toggleLogPanel,
     isLogReplaying,
+    matchMode,
+    onlineRole,
+    userName,
+    setUserName,
+    peerInfo,
+    startLocalMatch,
+    startSpectatorMode,
+    startOnlineMatch,
+    connectMatchPeer,
+    confirmLeadingPlayer,
   } = useGameState()
 
   const {
@@ -124,25 +135,30 @@ function App() {
     () => units.filter((unit) => unit.owner === activeStepPlayer && unit.status === 'tentative').length,
     [units, activeStepPlayer],
   )
+  const interactionsLocked = matchMode === 'spectator'
 
-  const canProceed = canAdvanceStep({
-    step,
-    diceRedistribution,
-    placementState,
-    pendingCreations: creationRemaining,
-    pendingPlacementCount,
-    dicePlacementStage,
-    movementState,
-    nextActions,
-    activeStepPlayer,
-  })
+  const canProceed =
+    step === 0
+      ? false
+      : canAdvanceStep({
+          step,
+          diceRedistribution,
+          placementState,
+          pendingCreations: creationRemaining,
+          pendingPlacementCount,
+          dicePlacementStage,
+          movementState,
+          nextActions,
+          activeStepPlayer,
+        })
 
   const openPlacementModal = useCallback(
     (player: PlayerId) => {
+      if (interactionsLocked) return
       playAudio('button')
       setPlacementState({ player, swapMode: false, swapSelection: [], stepTag: step })
     },
-    [setPlacementState, step],
+    [setPlacementState, step, interactionsLocked],
   )
 
   const handleDiceSlotClick = (slotId: 'R1' | 'R2' | 'R3') => {
@@ -264,6 +280,9 @@ function App() {
   const isDicePlacementStep = step === 6
 
   const renderProcedureControls = () => {
+    if (step === 0) {
+      return <p>対戦形式決定手順を完了してください。</p>
+    }
     if (step === 1) {
       return <p>プレイヤー名と先行を決定してください。</p>
     }
@@ -278,6 +297,7 @@ function App() {
           {remaining > 0 ? (
             <>
               <button
+                disabled={interactionsLocked}
                 onClick={() => {
                   playAudio('button')
                   setCreationRequest({ player: activeStepPlayer, step })
@@ -286,12 +306,17 @@ function App() {
               >
                 次のユニット作成
               </button>
-              <button disabled={!hasPlacementCandidates} onClick={() => openPlacementModal(activeStepPlayer)}>
+              <button
+                disabled={!hasPlacementCandidates || interactionsLocked}
+                onClick={() => openPlacementModal(activeStepPlayer)}
+              >
                 既存ユニットを配置
               </button>
             </>
           ) : hasPlacementCandidates ? (
-            <button onClick={() => openPlacementModal(activeStepPlayer)}>既存ユニットを配置</button>
+            <button disabled={interactionsLocked} onClick={() => openPlacementModal(activeStepPlayer)}>
+              既存ユニットを配置
+            </button>
           ) : (
             <p>必要回数を達成しました。</p>
           )}
@@ -313,6 +338,7 @@ function App() {
             <p>エネルギー0のため通常アクションになります。</p>
             {nextActions[player] !== 'standard' ? (
               <button
+                disabled={interactionsLocked}
                 onClick={() => {
                   playAudio('button')
                   setNextActions((prev) => ({ ...prev, [player]: 'standard' }))
@@ -328,6 +354,7 @@ function App() {
         <>
           <p>次アクションをラジオボタンで決定してください。</p>
           <button
+            disabled={interactionsLocked}
             onClick={() => {
               playAudio('button')
               handleActionSelection(player, nextActions[player] ?? 'standard')
@@ -348,6 +375,7 @@ function App() {
         <>
           <p>{actionInfo.label}を実行します。</p>
           <button
+            disabled={interactionsLocked}
             onClick={() => {
               playAudio('button')
               handleExecuteAction(step)
@@ -475,17 +503,28 @@ function App() {
         <h1>Phantom Beast Fighting</h1>
         <p>オンライン専用二人用ボードゲーム</p>
       </header>
+      {matchMode ? (
+        <div className="connection-info">
+          <span>
+            対戦形式:
+            {matchMode === 'local' ? '1ブラウザで対戦' : matchMode === 'online' ? '通信で対戦' : '観戦'}
+          </span>
+          <span>通信用ID: {peerInfo.id ?? '取得中...'}</span>
+          <span>接続状況: {peerInfo.status}</span>
+        </div>
+      ) : null}
       <main className="board-layout">
         <section className="board-area">
           <DiceTray diceSlots={diceSlots} onSlotClick={handleDiceSlotClick} highlight={isDicePlacementStep} />
-          <GameBoard
-            boardMap={boardMap}
-            movementState={movementState}
-            placementState={placementState}
-            onSwapSelection={handleSwapSelection}
-            onSelectUnitForMovement={handleSelectUnitForMovement}
-            onMoveUnit={handleMoveUnit}
-          />
+      <GameBoard
+        boardMap={boardMap}
+        movementState={movementState}
+        placementState={placementState}
+        onSwapSelection={handleSwapSelection}
+        onSelectUnitForMovement={handleSelectUnitForMovement}
+        onMoveUnit={handleMoveUnit}
+        interactionLocked={interactionsLocked}
+      />
         </section>
         <PlayerSidebar
           players={players}
@@ -516,8 +555,20 @@ function App() {
 
       {showNextActionsDebug ? <div className="debug-next-actions">{debugNextActions}</div> : null}
 
+      <MatchSetupModal
+        isOpen={step === 0}
+        userName={userName}
+        activeMode={matchMode}
+        peerInfo={peerInfo}
+        onUserNameChange={setUserName}
+        onStartLocal={startLocalMatch}
+        onStartOnline={startOnlineMatch}
+        onStartSpectator={startSpectatorMode}
+        onConnect={connectMatchPeer}
+      />
+
       <PlayerSetupModal
-        isOpen={step === 1 && !victor}
+        isOpen={step === 1 && !victor && (matchMode === 'local' || (matchMode === 'online' && onlineRole === 'A'))}
         nameStage={nameStage}
         nameDrafts={nameDrafts}
         nameLocks={nameLocks}
@@ -531,7 +582,7 @@ function App() {
             A: { ...prev.A, name: nameDrafts.A },
             B: { ...prev.B, name: nameDrafts.B },
           }))
-          setLeadingPlayer(initiativeChoice)
+          confirmLeadingPlayer(initiativeChoice)
           setStep(2)
         }}
         onUploadAndReplayLogs={uploadLogsAndReplay}

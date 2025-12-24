@@ -89,6 +89,7 @@ export const GOLD_FACES: ClassType[] = [
 ]
 
 export const stepDescriptions: Record<ProcedureStep, string> = {
+  0: '対戦形式決定手順',
   1: '先行決定手順',
   2: '先行前期作戦手順（先行が3回ユニット作成→配置）',
   3: '後攻作戦手順（後攻が5回ユニット作成→配置）',
