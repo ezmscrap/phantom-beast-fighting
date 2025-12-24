@@ -252,22 +252,32 @@ export const useGameState = () => {
     ],
   )
 
-  const handleReplayLogs = useCallback(async () => {
-    if (!uploadedLogs.length) return
-    const firstSnapshot = uploadedLogs[0]?.beforeState
-    if (!firstSnapshot) return
-    applySnapshot(firstSnapshot)
-    await replayFromLogs(applySnapshot)
-  }, [applySnapshot, replayFromLogs, uploadedLogs])
+  const handleReplayLogs = useCallback(
+    async (entries?: GameLogEntry[]) => {
+      const source = entries ?? uploadedLogs
+      if (!source.length) return
+      const firstSnapshot = source[0]?.beforeState
+      if (firstSnapshot) {
+        applySnapshot(firstSnapshot)
+      }
+      await replayFromLogs(applySnapshot, source)
+    },
+    [applySnapshot, replayFromLogs, uploadedLogs],
+  )
 
   const handleLogUpload = useCallback((file: File) => handleUpload(file), [handleUpload])
 
   const uploadLogsAndReplay = useCallback(
     async (file: File) => {
-      await handleLogUpload(file)
-      await handleReplayLogs()
+      const entries = await handleLogUpload(file)
+      if (!entries?.length) return
+      const firstSnapshot = entries[0].beforeState
+      if (firstSnapshot) {
+        applySnapshot(firstSnapshot)
+      }
+      await handleReplayLogs(entries)
     },
-    [handleLogUpload, handleReplayLogs],
+    [handleLogUpload, handleReplayLogs, applySnapshot],
   )
 
   const resetGame = () => {

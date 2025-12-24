@@ -32,6 +32,7 @@ export const useGameLog = ({ playbackDelayMs = 1000 }: UseGameLogOptions = {}) =
     const text = await file.text()
     const data = JSON.parse(text) as GameLogEntry[]
     setUploadedLogs(data)
+    return data
   }, [])
 
   const canReplay = useMemo(() => uploadedLogs.length > 0 && !isReplaying, [uploadedLogs.length, isReplaying])
@@ -39,10 +40,11 @@ export const useGameLog = ({ playbackDelayMs = 1000 }: UseGameLogOptions = {}) =
   const toggleCollapsed = useCallback(() => setIsCollapsed((prev) => !prev), [])
 
   const replayFromLogs = useCallback(
-    async (applySnapshot: (snapshot: GameSnapshot) => void) => {
-      if (!uploadedLogs.length || isReplaying) return
+    async (applySnapshot: (snapshot: GameSnapshot) => void, entries?: GameLogEntry[]) => {
+      const source = entries ?? uploadedLogs
+      if (!source.length || isReplaying) return
       setIsReplaying(true)
-      for (const entry of uploadedLogs) {
+      for (const entry of source) {
         await delay(playbackDelayMs)
         applySnapshot(deepClone(entry.afterState))
       }

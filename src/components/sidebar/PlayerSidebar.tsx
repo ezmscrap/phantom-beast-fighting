@@ -31,7 +31,7 @@ export interface PlayerSidebarProps {
   onSelectUnitForMovement: (unit: Unit) => void
   logs: GameLogEntry[]
   onDownloadLogs: () => void
-  onUploadLogs: (file: File) => void
+  onUploadLogs: (file: File) => Promise<unknown>
   canReplayLogs: boolean
   onReplayLogs: () => void
   logPanelCollapsed: boolean
@@ -68,7 +68,7 @@ export const PlayerSidebar = ({
     const file = event.target.files?.[0]
     if (file) {
       playAudio('button')
-      onUploadLogs(file)
+      void onUploadLogs(file)
     }
     event.target.value = ''
   }
