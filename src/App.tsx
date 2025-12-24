@@ -161,6 +161,7 @@ function App() {
 
   const handleDiceSlotClick = (slotId: 'R1' | 'R2' | 'R3') => {
     if (step !== 6 || dicePlacementStage >= 3) return
+    if (matchMode === 'online' && localPlayerId !== activeStepPlayer) return
     placeDie(slotId)
   }
 
