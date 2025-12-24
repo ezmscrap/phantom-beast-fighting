@@ -51,10 +51,13 @@ export const MiniBoardModal = ({
               {columns.map((column) => {
                 const cell = `${column}${row}` as BoardCell
                 const occupant = boardMap.get(cell)
+                const ownsUnit = Boolean(occupant && occupant.owner === miniBoardState.player)
                 const selectable =
                   miniBoardState.mode === 'placement'
                     ? currentPlacementTargets.includes(cell)
-                    : Boolean(occupant && occupant.owner === miniBoardState.player)
+                    : Boolean(ownsUnit && occupant?.status === 'tentative')
+                const disabled =
+                  miniBoardState.mode === 'placement' ? !selectable : !ownsUnit
                 const swapChosen =
                   miniBoardState.mode === 'swap' && occupant
                     ? placementState.swapSelection.includes(occupant.id)
@@ -62,8 +65,10 @@ export const MiniBoardModal = ({
                 return (
                   <button
                     key={cell}
-                    className={`mini-cell ${selectable ? 'highlight' : ''} ${swapChosen ? 'swap-selected' : ''}`}
-                    disabled={!selectable}
+                    className={`mini-cell ${
+                      selectable ? (miniBoardState.mode === 'swap' ? 'swap-selectable' : 'highlight') : ''
+                    } ${swapChosen ? 'swap-selected' : ''}`}
+                    disabled={disabled}
                     onClick={() => {
                       playAudio('button')
                       onCellClick(cell)

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { PlayerId, ProcedureStep } from '../types'
 import { useUnitLogic } from './game/useUnitLogic'
 import { useMovementLogic } from './game/useMovementLogic'
@@ -37,6 +37,9 @@ export const useGameState = () => {
     cancelMiniBoard,
     handleRemoveUnit,
     resetUnitState,
+    finalizeTentativePlacements,
+    swapRestrictionWarning,
+    dismissSwapRestrictionWarning,
   } = useUnitLogic()
 
   const {
@@ -80,6 +83,10 @@ export const useGameState = () => {
       return ((prev + 1) as ProcedureStep)
     })
   }, [])
+
+  useEffect(() => {
+    finalizeTentativePlacements()
+  }, [step, finalizeTentativePlacements])
 
   const resetGame = () => {
     resetUnitState()
@@ -145,5 +152,7 @@ export const useGameState = () => {
     toggleSwapMode,
     goToNextStep,
     resetGame,
+    swapRestrictionWarning,
+    dismissSwapRestrictionWarning,
   }
 }

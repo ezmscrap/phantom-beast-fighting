@@ -10,6 +10,7 @@ import { ActionSelectionModal } from './components/modals/ActionSelectionModal'
 import { PlayerSetupModal } from './components/modals/PlayerSetupModal'
 import { DiceTray } from './components/board/DiceTray'
 import { GameBoard } from './components/board/GameBoard'
+import { Modal } from './components/Modal'
 import { PlayerSidebar } from './components/sidebar/PlayerSidebar'
 import { useGameState } from './state/gameState'
 import { useDiceState } from './state/diceState'
@@ -74,6 +75,8 @@ function App() {
     placementSelectionHandler,
     goToNextStep,
     resetGame,
+    swapRestrictionWarning,
+    dismissSwapRestrictionWarning,
   } = useGameState()
 
   const {
@@ -108,6 +111,11 @@ function App() {
     [units, activeStepPlayer],
   )
 
+  const tentativePlacementCount = useMemo(
+    () => units.filter((unit) => unit.owner === activeStepPlayer && unit.status === 'tentative').length,
+    [units, activeStepPlayer],
+  )
+
   const canProceed = canAdvanceStep({
     step,
     diceRedistribution,
@@ -123,9 +131,9 @@ function App() {
   const openPlacementModal = useCallback(
     (player: PlayerId) => {
       playAudio('button')
-      setPlacementState({ player, swapMode: false, swapSelection: [] })
+      setPlacementState({ player, swapMode: false, swapSelection: [], stepTag: step })
     },
-    [setPlacementState],
+    [setPlacementState, step],
   )
 
   const handleDiceSlotClick = (slotId: 'R1' | 'R2' | 'R3') => {
@@ -188,10 +196,10 @@ function App() {
   useEffect(() => {
     if (![2, 3, 4].includes(step)) return
     const remaining = creationRemaining[step as 2 | 3 | 4]
-    if (remaining === 0 && pendingPlacementCount === 0) {
+    if (remaining === 0 && pendingPlacementCount === 0 && tentativePlacementCount === 0) {
       goToNextStep()
     }
-  }, [step, creationRemaining, pendingPlacementCount, goToNextStep])
+  }, [step, creationRemaining, pendingPlacementCount, tentativePlacementCount, goToNextStep])
 
   useEffect(() => {
     if (step !== 5) return
@@ -552,6 +560,10 @@ function App() {
           setCreationSelection({})
         }}
       />
+
+      <Modal title="警告" isOpen={swapRestrictionWarning} onClose={dismissSwapRestrictionWarning}>
+        <p>既に位置が確定されたユニットです。</p>
+      </Modal>
 
       <DiceRedistributionModal
         state={diceRedistribution}

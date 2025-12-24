@@ -19,7 +19,7 @@ const coordsToCell = (row: number, column: number): BoardCell | null => {
 export const buildBoardMap = (units: Unit[]) => {
   const map = new Map<BoardCell, Unit>()
   units.forEach((unit) => {
-    if (unit.status === 'deployed' && unit.position) {
+    if ((unit.status === 'deployed' || unit.status === 'tentative') && unit.position) {
       map.set(unit.position, unit)
     }
   })

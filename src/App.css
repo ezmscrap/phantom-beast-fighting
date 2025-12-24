@@ -81,6 +81,11 @@ header h1 {
   box-shadow: 0 0 15px rgba(108, 243, 255, 0.6);
 }
 
+.board-cell.swap-selectable {
+  border-color: rgba(246, 177, 61, 0.8);
+  box-shadow: 0 0 12px rgba(246, 177, 61, 0.4);
+}
+
 .board-cell.swap-selected {
   border-color: #f6b13d;
   box-shadow: 0 0 15px rgba(246, 177, 61, 0.6);
@@ -301,6 +306,11 @@ header h1 {
 .mini-cell.highlight {
   border-color: #6cf3ff;
   box-shadow: 0 0 12px rgba(108, 243, 255, 0.4);
+}
+
+.mini-cell.swap-selectable {
+  border-color: rgba(246, 177, 61, 0.8);
+  box-shadow: 0 0 10px rgba(246, 177, 61, 0.4);
 }
 
 .mini-cell.swap-selected {

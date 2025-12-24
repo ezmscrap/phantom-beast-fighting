@@ -3,7 +3,7 @@ export type PlayerId = 'A' | 'B'
 export type BaseType = 'dragon' | 'griffin' | 'unicorn'
 export type ClassType = 'swordsman' | 'mage' | 'tactician'
 
-export type UnitStatus = 'preDeployment' | 'deployed' | 'removed'
+export type UnitStatus = 'preDeployment' | 'tentative' | 'deployed' | 'removed'
 
 export type ColumnLabel = 'A' | 'B' | 'C' | 'D' | 'E'
 export type RowLabel = 1 | 2 | 3 | 4 | 5 | 6

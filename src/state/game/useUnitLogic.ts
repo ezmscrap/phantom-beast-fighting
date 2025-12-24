@@ -25,6 +25,7 @@ export const useUnitLogic = () => {
   const [creationSelection, setCreationSelection] = useState<{ base?: BaseType; role?: ClassType }>({})
   const [miniBoardState, setMiniBoardState] = useState<MiniBoardState | null>(null)
   const [victor, setVictor] = useState<{ player: PlayerId; reason: ClassType } | null>(null)
+  const [swapRestrictionWarning, setSwapRestrictionWarning] = useState(false)
 
   useEffect(() => {
     if (!placementState) {
@@ -133,7 +134,7 @@ export const useUnitLogic = () => {
     setUnits((prev) =>
       prev.map((unit) => {
         if (unit.id === unitId) {
-          return { ...unit, status: 'deployed' as const, position: cell }
+          return { ...unit, status: 'tentative' as const, position: cell }
         }
         return unit
       }),
@@ -175,10 +176,21 @@ export const useUnitLogic = () => {
 
   const handleSwapSelection = useCallback(
     (unitId: string) => {
+      const targetUnit = units.find((unit) => unit.id === unitId)
+      if (!targetUnit) return
       setPlacementState((prev) => {
         if (!prev) return prev
+        if (targetUnit.owner !== prev.player) {
+          return prev
+        }
+        if (targetUnit.status !== 'tentative') {
+          setSwapRestrictionWarning(true)
+          return prev
+        }
         const already = prev.swapSelection.includes(unitId)
-        const nextSelection = already ? prev.swapSelection.filter((id) => id !== unitId) : [...prev.swapSelection, unitId]
+        const nextSelection = already
+          ? prev.swapSelection.filter((id) => id !== unitId)
+          : [...prev.swapSelection, unitId]
         if (nextSelection.length === 2) {
           handleSwapUnits(nextSelection[0], nextSelection[1])
           return { ...prev, swapSelection: [] }
@@ -186,7 +198,7 @@ export const useUnitLogic = () => {
         return { ...prev, swapSelection: nextSelection }
       })
     },
-    [handleSwapUnits],
+    [units, handleSwapUnits, setSwapRestrictionWarning],
   )
 
   const placementSelectionHandler = useCallback((unitId: string) => {
@@ -257,6 +269,15 @@ export const useUnitLogic = () => {
     setPlacementState((prev) => (prev ? { ...prev, swapMode: enabled, swapSelection: [] } : prev))
   }, [])
 
+  const finalizeTentativePlacements = useCallback(() => {
+    setUnits((prev) =>
+      prev.map((unit) => (unit.status === 'tentative' ? { ...unit, status: 'deployed' as const } : unit)),
+    )
+    setPlacementState((prev) => (prev ? { ...prev, swapMode: false, swapSelection: [] } : prev))
+  }, [])
+
+  const dismissSwapRestrictionWarning = useCallback(() => setSwapRestrictionWarning(false), [])
+
   const resetUnitState = useCallback(() => {
     setPlayers(createInitialPlayers())
     setUnits([])
@@ -266,6 +287,7 @@ export const useUnitLogic = () => {
     setCreationSelection({})
     setMiniBoardState(null)
     setVictor(null)
+    setSwapRestrictionWarning(false)
   }, [])
 
   return {
@@ -299,5 +321,8 @@ export const useUnitLogic = () => {
     cancelMiniBoard,
     handleRemoveUnit,
     resetUnitState,
+    finalizeTentativePlacements,
+    swapRestrictionWarning,
+    dismissSwapRestrictionWarning,
   }
 }

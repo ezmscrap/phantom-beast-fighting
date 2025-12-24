@@ -42,17 +42,16 @@ export const GameBoard = ({
             const occupant = boardMap.get(cell)
             const highlight =
               Boolean(movementState && movementState.selectedUnitId && movementState.destinations.includes(cell))
-            const swapSelectable =
-              Boolean(placementState?.swapMode) &&
-              occupant &&
-              occupant.owner === placementState?.player
+            const swapEligibleOwner =
+              Boolean(placementState?.swapMode) && occupant && occupant.owner === placementState?.player
+            const swapSelectable = swapEligibleOwner && occupant?.status === 'tentative'
             const swapSelected =
               swapSelectable &&
               placementState?.swapSelection.includes(occupant?.id ?? '')
 
             const handleCellClick = () => {
               if (placementState?.swapMode) {
-                if (swapSelectable && occupant) {
+                if (swapEligibleOwner && occupant) {
                   onSwapSelection(occupant.id)
                 }
                 return
@@ -75,7 +74,7 @@ export const GameBoard = ({
             return (
               <button
                 key={cell}
-                className={`board-cell ${highlight ? 'highlight' : ''} ${swapSelected ? 'swap-selected' : ''}`}
+                className={`board-cell ${highlight ? 'highlight' : ''} ${swapSelectable ? 'swap-selectable' : ''} ${swapSelected ? 'swap-selected' : ''}`}
                 onClick={handleCellClick}
               >
                 {renderPiece(occupant)}
