@@ -87,6 +87,7 @@ function App() {
     toggleLogPanel,
     isLogReplaying,
     replayingLogEntry,
+    resolveReplayGate,
     matchMode,
     onlineRole,
     userName,
@@ -108,7 +109,6 @@ function App() {
     placeDie,
     gatherDiceTypes,
     completeRedistribution,
-    lastDiceRoll,
     recordDiceRoll,
   } = useGameState()
 
@@ -172,7 +172,12 @@ function App() {
   const handleDiceResolve = useCallback(
     (updatedDice: DiceVisual[], tallies: MovementBudget) => {
       updateDiceOverlay(updatedDice, tallies)
-      if (isLogReplaying) return
+      if (isLogReplaying) {
+        if (replayingLogEntry?.action === 'diceRoll') {
+          resolveReplayGate()
+        }
+        return
+      }
       setMovementState((prev) => (prev ? { ...prev, budget: { ...tallies } } : prev))
       const diceRoll: DiceRollRecord = {
         id: `roll-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -183,7 +188,15 @@ function App() {
       }
       recordDiceRoll(diceRoll, activeStepPlayer)
     },
-    [updateDiceOverlay, setMovementState, recordDiceRoll, activeStepPlayer, isLogReplaying],
+    [
+      updateDiceOverlay,
+      setMovementState,
+      recordDiceRoll,
+      activeStepPlayer,
+      isLogReplaying,
+      replayingLogEntry,
+      resolveReplayGate,
+    ],
   )
 
   const confirmDiceResult = () => {
@@ -251,15 +264,17 @@ function App() {
   }, [isLogReplaying])
 
   useEffect(() => {
-    if (!isLogReplaying || !lastDiceRoll) return
+    if (!isLogReplaying) return
     if (replayingLogEntry?.action !== 'diceRoll') return
-    if (lastDiceRoll.id === replayedRollIdRef.current) return
-    replayedRollIdRef.current = lastDiceRoll.id
-    const diceTypes = lastDiceRoll.dice.map((die) => die.type)
-    const predeterminedValues = lastDiceRoll.dice.map((die) => die.value)
+    const roll = replayingLogEntry.diceRoll
+    if (!roll) return
+    if (roll.id === replayedRollIdRef.current) return
+    replayedRollIdRef.current = roll.id
+    const diceTypes = roll.dice.map((die) => die.type)
+    const predeterminedValues = roll.dice.map((die) => die.value)
     launchRoll(diceTypes, predeterminedValues)
     setRollSessionId(Date.now().toString())
-  }, [isLogReplaying, lastDiceRoll, replayingLogEntry, launchRoll])
+  }, [isLogReplaying, replayingLogEntry, launchRoll])
 
   /**
    * 作戦手順(8,9,10,13,14,15)の開始時に、選択されたアクションと一致しなければスキップする。

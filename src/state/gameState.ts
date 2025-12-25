@@ -35,6 +35,7 @@ export const useGameState = () => {
   const [localPlayerId, setLocalPlayerId] = useState<PlayerId>('A')
   const [lastDiceRoll, setLastDiceRoll] = useState<DiceRollRecord | null>(null)
   const [replayingLogEntry, setReplayingLogEntry] = useState<GameLogEntry | null>(null)
+  const replayGateRef = useRef<(() => void) | null>(null)
   const [peerState, setPeerState] = useState<{ id: string | null; status: ConnectionStatus }>({
     id: null,
     status: 'idle',
@@ -406,8 +407,14 @@ export const useGameState = () => {
           applySnapshot(firstSnapshot)
         }
       }
-      await replayFromLogs(applySnapshot, listToApply, (entry) => {
+      await replayFromLogs(applySnapshot, listToApply, async (entry) => {
         setReplayingLogEntry(entry)
+        if (entry.action === 'diceRoll' && entry.diceRoll?.dice?.length) {
+          await new Promise<void>((resolve) => {
+            replayGateRef.current = resolve
+          })
+          replayGateRef.current = null
+        }
       })
       setReplayingLogEntry(null)
     },
@@ -636,5 +643,6 @@ export const useGameState = () => {
     toggleLogPanel: toggleCollapsed,
     isLogReplaying: isReplaying,
     replayingLogEntry,
+    resolveReplayGate: () => replayGateRef.current?.(),
   }
 }

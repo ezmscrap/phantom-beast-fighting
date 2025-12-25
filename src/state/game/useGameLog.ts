@@ -43,14 +43,14 @@ export const useGameLog = ({ playbackDelayMs = 1000 }: UseGameLogOptions = {}) =
     async (
       applySnapshot: (snapshot: GameSnapshot) => void,
       entries?: GameLogEntry[],
-      onEntry?: (entry: GameLogEntry) => void,
+      onEntry?: (entry: GameLogEntry) => void | Promise<void>,
     ) => {
       const source = entries ?? uploadedLogs
       if (!source.length || isReplaying) return
       setIsReplaying(true)
       for (const entry of source) {
         await delay(playbackDelayMs)
-        onEntry?.(entry)
+        await onEntry?.(entry)
         applySnapshot(deepClone(entry.afterState))
       }
       setIsReplaying(false)
