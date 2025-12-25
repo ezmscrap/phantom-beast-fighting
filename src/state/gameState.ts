@@ -34,6 +34,7 @@ export const useGameState = () => {
   const [onlineRole, setOnlineRole] = useState<PlayerId | null>(null)
   const [localPlayerId, setLocalPlayerId] = useState<PlayerId>('A')
   const [lastDiceRoll, setLastDiceRoll] = useState<DiceRollRecord | null>(null)
+  const [replayingLogEntry, setReplayingLogEntry] = useState<GameLogEntry | null>(null)
   const [peerState, setPeerState] = useState<{ id: string | null; status: ConnectionStatus }>({
     id: null,
     status: 'idle',
@@ -405,7 +406,10 @@ export const useGameState = () => {
           applySnapshot(firstSnapshot)
         }
       }
-      await replayFromLogs(applySnapshot, listToApply)
+      await replayFromLogs(applySnapshot, listToApply, (entry) => {
+        setReplayingLogEntry(entry)
+      })
+      setReplayingLogEntry(null)
     },
     [applySnapshot, replayFromLogs, uploadedLogs],
   )
@@ -631,5 +635,6 @@ export const useGameState = () => {
     isLogPanelCollapsed: isCollapsed,
     toggleLogPanel: toggleCollapsed,
     isLogReplaying: isReplaying,
+    replayingLogEntry,
   }
 }

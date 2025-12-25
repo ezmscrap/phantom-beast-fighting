@@ -86,6 +86,7 @@ function App() {
     isLogPanelCollapsed,
     toggleLogPanel,
     isLogReplaying,
+    replayingLogEntry,
     matchMode,
     onlineRole,
     userName,
@@ -251,13 +252,14 @@ function App() {
 
   useEffect(() => {
     if (!isLogReplaying || !lastDiceRoll) return
+    if (replayingLogEntry?.action !== 'diceRoll') return
     if (lastDiceRoll.id === replayedRollIdRef.current) return
     replayedRollIdRef.current = lastDiceRoll.id
     const diceTypes = lastDiceRoll.dice.map((die) => die.type)
     const predeterminedValues = lastDiceRoll.dice.map((die) => die.value)
     launchRoll(diceTypes, predeterminedValues)
     setRollSessionId(Date.now().toString())
-  }, [isLogReplaying, lastDiceRoll, launchRoll])
+  }, [isLogReplaying, lastDiceRoll, replayingLogEntry, launchRoll])
 
   /**
    * 作戦手順(8,9,10,13,14,15)の開始時に、選択されたアクションと一致しなければスキップする。

@@ -40,12 +40,17 @@ export const useGameLog = ({ playbackDelayMs = 1000 }: UseGameLogOptions = {}) =
   const toggleCollapsed = useCallback(() => setIsCollapsed((prev) => !prev), [])
 
   const replayFromLogs = useCallback(
-    async (applySnapshot: (snapshot: GameSnapshot) => void, entries?: GameLogEntry[]) => {
+    async (
+      applySnapshot: (snapshot: GameSnapshot) => void,
+      entries?: GameLogEntry[],
+      onEntry?: (entry: GameLogEntry) => void,
+    ) => {
       const source = entries ?? uploadedLogs
       if (!source.length || isReplaying) return
       setIsReplaying(true)
       for (const entry of source) {
         await delay(playbackDelayMs)
+        onEntry?.(entry)
         applySnapshot(deepClone(entry.afterState))
       }
       setIsReplaying(false)
