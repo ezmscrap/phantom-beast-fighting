@@ -8,6 +8,7 @@ interface DiceOverlayState {
   dice: DiceVisual[]
   tallies: MovementBudget
   debugSettings?: DebugDiceSettings
+  predeterminedValues?: number[]
 }
 
 const createEmptyBudget = (): MovementBudget => ({ swordsman: 0, mage: 0, tactician: 0 })
@@ -39,11 +40,16 @@ export const useDiceRoller = () => {
   }, [debugSettings])
 
   const launchRoll = useCallback(
-    (diceTypes: DiceType[]) => {
+    (diceTypes: DiceType[], predeterminedValues?: number[]) => {
       const visuals = createVisuals(diceTypes)
       playAudio(diceTypes.length === 1 ? 'diceSingle' : 'diceMulti')
       const budget = createEmptyBudget()
-      setOverlay({ dice: visuals, tallies: { ...budget }, debugSettings: debugSettingsRef.current })
+      setOverlay({
+        dice: visuals,
+        tallies: { ...budget },
+        debugSettings: debugSettingsRef.current,
+        predeterminedValues,
+      })
       return { budget }
     },
     [],

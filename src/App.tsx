@@ -1,5 +1,5 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import type { ActionType, BoardCell, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ActionType, BoardCell, DiceRollRecord, MovementBudget, PlayerId, ProcedureStep, Unit } from './types'
 import './App.css'
 import type { DiceVisual } from './components/dice/types'
 import { DiceRedistributionModal } from './components/modals/DiceRedistributionModal'
@@ -107,6 +107,8 @@ function App() {
     placeDie,
     gatherDiceTypes,
     completeRedistribution,
+    lastDiceRoll,
+    recordDiceRoll,
   } = useGameState()
 
   const {
@@ -118,6 +120,7 @@ function App() {
     handleResolve: updateDiceOverlay,
   } = useDiceRoller()
   const [rollSessionId, setRollSessionId] = useState(() => Date.now().toString())
+  const replayedRollIdRef = useRef<string | null>(null)
   const showNextActionsDebug = appConfig.gameDebug.showStatus
 
   const activeStepPlayer = getActivePlayerForStep(step, leadingPlayer)
@@ -168,14 +171,24 @@ function App() {
   const handleDiceResolve = useCallback(
     (updatedDice: DiceVisual[], tallies: MovementBudget) => {
       updateDiceOverlay(updatedDice, tallies)
+      if (isLogReplaying) return
       setMovementState((prev) => (prev ? { ...prev, budget: { ...tallies } } : prev))
+      const diceRoll: DiceRollRecord = {
+        id: `roll-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        dice: updatedDice.map((die) => ({
+          type: die.type,
+          value: die.faceIndex != null ? die.faceIndex + 1 : 1,
+        })),
+      }
+      recordDiceRoll(diceRoll, activeStepPlayer)
     },
-    [updateDiceOverlay, setMovementState],
+    [updateDiceOverlay, setMovementState, recordDiceRoll, activeStepPlayer, isLogReplaying],
   )
 
   const confirmDiceResult = () => {
     playAudio('button')
     closeOverlay()
+    if (isLogReplaying) return
     setMovementState((state) => {
       if (!state) return state
       const noBudget = state.budget.swordsman === 0 && state.budget.mage === 0 && state.budget.tactician === 0
@@ -229,6 +242,22 @@ function App() {
     if (step !== 5) return
     goToNextStep()
   }, [step, goToNextStep])
+
+  useEffect(() => {
+    if (!isLogReplaying) {
+      replayedRollIdRef.current = null
+    }
+  }, [isLogReplaying])
+
+  useEffect(() => {
+    if (!isLogReplaying || !lastDiceRoll) return
+    if (lastDiceRoll.id === replayedRollIdRef.current) return
+    replayedRollIdRef.current = lastDiceRoll.id
+    const diceTypes = lastDiceRoll.dice.map((die) => die.type)
+    const predeterminedValues = lastDiceRoll.dice.map((die) => die.value)
+    launchRoll(diceTypes, predeterminedValues)
+    setRollSessionId(Date.now().toString())
+  }, [isLogReplaying, lastDiceRoll, launchRoll])
 
   /**
    * 作戦手順(8,9,10,13,14,15)の開始時に、選択されたアクションと一致しなければスキップする。
@@ -680,10 +709,11 @@ function App() {
             dice={diceOverlay.dice}
             tallies={diceOverlay.tallies}
             visible
-            onClose={confirmDiceResult}
+            onClose={isLogReplaying ? closeOverlay : confirmDiceResult}
             onResolve={handleDiceResolve}
             rollSessionId={rollSessionId}
             debugSettings={diceOverlay.debugSettings ?? debugSettings}
+            predeterminedValues={diceOverlay.predeterminedValues}
           />
         ) : null}
       </Suspense>

@@ -13,13 +13,31 @@ interface DiceRollStageProps {
   rollSessionId: string
   visible: boolean
   debugSettings?: DebugDiceSettings
+  predeterminedValues?: number[]
   onRollResult: (results: RollResultEntry[]) => void
 }
 
 const createOutcomeValues = (count: number) =>
   Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1)
 
-export const DiceRollStage = ({ dice, rollSessionId, visible, debugSettings, onRollResult }: DiceRollStageProps) => {
+const resolveOutcomeValues = (dice: RollSource[], predeterminedValues?: number[]) =>
+  dice.map((_, index) => {
+    const predetermined = predeterminedValues?.[index]
+    if (Number.isFinite(predetermined)) {
+      const value = Math.max(1, Math.min(6, Number(predetermined)))
+      return value
+    }
+    return Math.floor(Math.random() * 6) + 1
+  })
+
+export const DiceRollStage = ({
+  dice,
+  rollSessionId,
+  visible,
+  debugSettings,
+  predeterminedValues,
+  onRollResult,
+}: DiceRollStageProps) => {
   const stageRef = useRef<HTMLDivElement | null>(null)
   const engineRef = useRef<DiceEngine | null>(null)
 
@@ -49,7 +67,10 @@ export const DiceRollStage = ({ dice, rollSessionId, visible, debugSettings, onR
       onRollResult([])
       return
     }
-    const values = createOutcomeValues(dice.length)
+    const values =
+      predeterminedValues && predeterminedValues.length > 0
+        ? resolveOutcomeValues(dice, predeterminedValues)
+        : createOutcomeValues(dice.length)
     let cancelled = false
     const launchRoll = async () => {
       const engine = ensureEngine()
@@ -78,7 +99,7 @@ export const DiceRollStage = ({ dice, rollSessionId, visible, debugSettings, onR
       cancelled = true
       engineRef.current?.cancelRoll()
     }
-  }, [dice, visible, rollSessionId, ensureEngine, debugSettings, onRollResult])
+  }, [dice, visible, rollSessionId, ensureEngine, debugSettings, predeterminedValues, onRollResult])
 
   return (
     <div className="dice-overlay" aria-hidden="true">

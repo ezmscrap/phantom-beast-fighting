@@ -4,6 +4,7 @@ import type {
   GameLogEntry,
   GameSnapshot,
   MatchMode,
+  DiceRollRecord,
   PlayerId,
   ProcedureStep,
 } from '../types'
@@ -32,6 +33,7 @@ export const useGameState = () => {
   const [userName, setUserName] = useState('プレイヤーA')
   const [onlineRole, setOnlineRole] = useState<PlayerId | null>(null)
   const [localPlayerId, setLocalPlayerId] = useState<PlayerId>('A')
+  const [lastDiceRoll, setLastDiceRoll] = useState<DiceRollRecord | null>(null)
   const [peerState, setPeerState] = useState<{ id: string | null; status: ConnectionStatus }>({
     id: null,
     status: 'idle',
@@ -82,6 +84,29 @@ export const useGameState = () => {
       pendingLogsRef.current.push({ meta, beforeState })
     },
     [getSnapshot],
+  )
+
+  const formatDiceRollDetail = useCallback(
+    (roll: DiceRollRecord) =>
+      roll.dice
+        .map((die) => `${die.type === 'silver' ? '銀' : '金'}:${die.value}`)
+        .join(', '),
+    [],
+  )
+
+  const recordDiceRoll = useCallback(
+    (roll: DiceRollRecord, actor: PlayerId) => {
+      queueLog({
+        step,
+        actor,
+        action: 'diceRoll',
+        detail: formatDiceRollDetail(roll),
+        target: 'dice',
+        diceRoll: roll,
+      })
+      setLastDiceRoll(roll)
+    },
+    [formatDiceRollDetail, queueLog, step],
   )
 
   const getCurrentStep = useCallback(() => step, [step])
@@ -202,15 +227,16 @@ export const useGameState = () => {
         movementState,
         actionSelection,
         nextActions,
-      nameStage,
-      nameDrafts,
-      nameLocks,
-      initiativeChoice,
-      victor,
-      diceSlots,
-      dicePlacementStage,
-      diceRedistribution,
-    }) as GameSnapshot,
+        nameStage,
+        nameDrafts,
+        nameLocks,
+        initiativeChoice,
+        victor,
+        diceSlots,
+        dicePlacementStage,
+        diceRedistribution,
+        lastDiceRoll,
+      }) as GameSnapshot,
     [
       step,
       leadingPlayer,
@@ -232,6 +258,7 @@ export const useGameState = () => {
       diceSlots,
       dicePlacementStage,
       diceRedistribution,
+      lastDiceRoll,
     ],
   )
 
@@ -263,6 +290,7 @@ export const useGameState = () => {
     victor,
     step,
     leadingPlayer,
+    lastDiceRoll,
     getSnapshot,
     pushLogEntry,
   ])
@@ -332,6 +360,7 @@ export const useGameState = () => {
       setDiceSlots(clone.diceSlots)
       setDicePlacementStage(clone.dicePlacementStage)
       setDiceRedistribution(clone.diceRedistribution)
+      setLastDiceRoll(clone.lastDiceRoll ?? null)
     },
     [
       setActionSelection,
@@ -354,6 +383,7 @@ export const useGameState = () => {
       setDiceSlots,
       setDicePlacementStage,
       setDiceRedistribution,
+      setLastDiceRoll,
     ],
   )
 
@@ -510,6 +540,7 @@ export const useGameState = () => {
     setPeerState({ id: null, status: 'idle' })
     setOnlineRole(null)
     setLocalPlayerId('A')
+    setLastDiceRoll(null)
   }
 
   return {
@@ -588,6 +619,8 @@ export const useGameState = () => {
     placeDie,
     gatherDiceTypes,
     completeRedistribution,
+    lastDiceRoll,
+    recordDiceRoll,
     logs,
     downloadLogs,
     handleLogUpload,

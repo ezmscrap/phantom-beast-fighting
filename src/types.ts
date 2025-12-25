@@ -32,6 +32,16 @@ export type DiceType = 'silver' | 'gold'
 
 export type DicePlacementStage = 0 | 1 | 2 | 3
 
+export interface DiceRollOutcome {
+  type: DiceType
+  value: number
+}
+
+export interface DiceRollRecord {
+  id: string
+  dice: DiceRollOutcome[]
+}
+
 export interface DiceSlotState {
   id: 'R1' | 'R2' | 'R3'
   die: DiceType | null
@@ -128,6 +138,7 @@ export interface GameSnapshot {
   diceSlots: DiceSlotState[]
   dicePlacementStage: DicePlacementStage
   diceRedistribution: DiceRedistributionState | null
+  lastDiceRoll: DiceRollRecord | null
 }
 
 export interface GameLogEntry {
@@ -137,6 +148,7 @@ export interface GameLogEntry {
   action: string
   detail?: string
   target?: string
+  diceRoll?: DiceRollRecord
   beforeState: GameSnapshot
   afterState: GameSnapshot
   timestamp: string

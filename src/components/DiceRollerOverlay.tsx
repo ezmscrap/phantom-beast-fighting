@@ -14,6 +14,7 @@ interface DiceRollerOverlayProps {
   rollSessionId: string
   onResolve: (dice: DiceVisual[], tallies: MovementBudget) => void
   debugSettings?: DebugDiceSettings
+  predeterminedValues?: number[]
 }
 
 const FACE_DEFINITIONS: Record<DiceType, ClassType[]> = {
@@ -39,6 +40,7 @@ export const DiceRollerOverlay = ({
   rollSessionId,
   onResolve,
   debugSettings,
+  predeterminedValues,
 }: DiceRollerOverlayProps) => {
   const numericMode = debugSettings?.numericMode ?? false
   const [settled, setSettled] = useState(false)
@@ -123,6 +125,7 @@ export const DiceRollerOverlay = ({
         rollSessionId={rollSessionId}
         visible={visible}
         debugSettings={debugSettings}
+        predeterminedValues={predeterminedValues}
         onRollResult={handleRollResults}
       />
       <DiceResultsSummary
